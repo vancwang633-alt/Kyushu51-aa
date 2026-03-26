@@ -188,9 +188,10 @@
 
 <script>
 // ==============================
-// 🔥 多人实时同步核心配置
+// 🔥 已填入你的专属配置
 // ==============================
-const GIST_ID = "0323244af986dd1c99fd70979e58504d"; // 公共云端数据库
+const GIST_ID = "0323244af986dd1c99fd70979e58504d";
+const GITHUB_TOKEN = "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";
 const GIST_FILE = "data.json";
 let bills = [];
 let currentRealRate = null;
@@ -200,7 +201,7 @@ const MEMBER_ICONS = {
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
-// 从云端加载数据（所有人共用）
+// 加载云端数据
 async function loadFromCloud() {
     try {
         let res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
@@ -218,7 +219,7 @@ async function loadFromCloud() {
     render();
 }
 
-// 保存到云端（所有人同步看到）
+// 保存到云端
 async function saveToCloud() {
     document.getElementById("syncStatus").innerText = "🔄 正在同步数据...";
     try {
@@ -226,7 +227,7 @@ async function saveToCloud() {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "token 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"
+                "Authorization": "token " + GITHUB_TOKEN
             },
             body: JSON.stringify({
                 files: {
@@ -245,6 +246,33 @@ async function saveToCloud() {
         alert("❌ 同步失败，请重试");
     }
 }
+
+// ==============================
+// 🔁 自动刷新：每 3 秒拉一次云端数据
+// ==============================
+let isSyncing = false;
+async function autoSync() {
+    if (isSyncing) return;
+    isSyncing = true;
+    try {
+        let res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+        let json = await res.json();
+        let data = JSON.parse(json.files[GIST_FILE].content);
+        
+        // 只有数据不一样才重新渲染，避免闪烁
+        if (JSON.stringify(data.bills) !== JSON.stringify(bills)) {
+            bills = data.bills || [];
+            document.getElementById("members").value = data.members || document.getElementById("members").value;
+            document.getElementById("rate").value = data.rate || document.getElementById("rate").value;
+            render();
+            document.getElementById("syncStatus").innerText = "🔄 已自动更新最新数据";
+        }
+    } catch (e) {}
+    isSyncing = false;
+}
+
+// 启动自动同步（3秒一次）
+setInterval(autoSync, 3000);
 
 function getMembers() {
     return document.getElementById("members").value.split(",").map(i => i.trim()).filter(i => i);
@@ -293,7 +321,7 @@ function getSelected(containerId) {
 }
 
 window.onload = () => {
-    loadFromCloud(); // 打开页面 → 自动加载云端最新数据
+    loadFromCloud();
 };
 
 function render() {
@@ -428,6 +456,7 @@ async function deleteBill(index) {
     render();
 }
 
+// 汇率接口已修复
 async function fetchRealRate() {
     try {
         const res = await fetch("https://open.er-api.com/v6/latest/JPY");
