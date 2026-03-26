@@ -197,7 +197,6 @@ window.onload = async () => {
     await loadFromCloud();
     fetchRealRate();
     render();
-    setInterval(loadFromCloud, 10000);
 };
 
 async function loadFromCloud() {
@@ -223,6 +222,7 @@ async function saveToCloud() {
         body: JSON.stringify(data),
         headers: { "Content-Type": "application/json" }
     });
+    render();
 }
 
 function saveSettings() {
@@ -254,8 +254,10 @@ async function addBill() {
     document.getElementById("title").value = "";
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
+    
     await saveToCloud();
     render();
+    alert("✅ 账单保存成功！");
 }
 
 function editBill(index) {
