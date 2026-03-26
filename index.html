@@ -18,10 +18,28 @@
         .btn:hover{background:#4a749e}
         .btn-pink{background:#6b9ccd}
         .btn-red{background:#e35353}
-        .rate-box{display:flex;align-items:center;gap:10px}
+
+        /* ========== 汇率布局优化：去掉图标 + 缩短输入框 + 同行显示单位 ========== */
+        .rate-box{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .rate-box input {
+            width: 120px;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+        .rate-box span.unit {
+            white-space: nowrap;
+            font-size: 14px;
+            color: #555;
+        }
+
         .rate-tip{background:#eef5ff;color:#316fea;padding:10px 14px;border-radius:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
         .rate-tip button{background:#316fea;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:12px}
-        .stats{display:flex;justify-content:space-around;text-align:center;padding:10px 0}
+        .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;text-align:center;padding:10px 0}
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
         .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -53,10 +71,7 @@
             font-size:13px;
             white-space: nowrap;
         }
-        .split-item input{
-            width:auto;
-            margin:0;
-        }
+        .split-item input{width:auto;margin:0}
         .edit-mode{display:none}
         .select-all-btn{
             background: #e0f0ff;
@@ -87,11 +102,13 @@
 <div class="card">
     <h3><span class="sakura">❀</span> 旅行成员 & 汇率</h3>
     <input type="text" id="members" value="小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry">
+    
+    <!-- 优化后的汇率行：无图标 + 短输入框 + 单位同行 -->
     <div class="rate-box">
-        <span>💴</span>
         <input type="number" id="rate" step="0.01" value="5.0">
-        <span>元/100日元</span>
+        <span class="unit">元/100日元</span>
     </div>
+
     <button class="btn" onclick="fetchRealRate()">🔄 刷新实时汇率</button>
     <button class="btn" onclick="saveSettings()">💾 保存设置</button>
 </div>
@@ -142,9 +159,10 @@
 <div class="card">
     <h3><span class="sakura">❀</span> 花费汇总</h3>
     <div class="stats">
-        <div><div class="num" id="totalJpy">0</div><div class="label">总日元</div></div>
-        <div><div class="num" id="totalCny">0</div><div class="label">总人民币</div></div>
-        <div><div class="num" id="perCny">0</div><div class="label">人均支出</div></div>
+        <div><div class="num" id="totalJpy">0</div><div class="label">总花费（日元）</div></div>
+        <div><div class="num" id="totalCny">0</div><div class="label">总花费（人民币）</div></div>
+        <div><div class="num" id="perJpy">0</div><div class="label">人均支出（日元）</div></div>
+        <div><div class="num" id="perCny">0</div><div class="label">人均支出（人民币）</div></div>
     </div>
 </div>
 
@@ -166,17 +184,10 @@ let bills = [];
 let currentRealRate = null;
 
 const MEMBER_ICONS = {
-    "小王":"🎮",
-    "陈局":"👨‍💼",
-    "刘导":"💣",
-    "段段":"🏢",
-    "Y经理":"💹",
-    "乱总":"🕺",
-    "紫央":"👩",
-    "Jerry":"🏥"
+    "小王":"🎮","陈局":"👨‍💼","刘导":"💣","段段":"🏢",
+    "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
-// ========== 永久存储：刷新/关闭/换设备 永不丢失 ==========
 function saveToLocal() {
     localStorage.setItem("tripBills", JSON.stringify(bills));
     localStorage.setItem("tripMembers", document.getElementById("members").value);
@@ -192,7 +203,6 @@ function loadFromLocal() {
     if (savedRate) document.getElementById("rate").value = savedRate;
 }
 
-// ========== 原有功能全部保留 ==========
 function getMembers() {
     return document.getElementById("members").value.split(",").map(i => i.trim()).filter(i => i);
 }
@@ -240,7 +250,7 @@ function getSelected(containerId) {
 }
 
 window.onload = () => {
-    loadFromLocal();  // 页面加载 → 自动恢复所有历史数据
+    loadFromLocal();
     renderSplitMembers("splitContainer");
     render();
 };
@@ -248,41 +258,52 @@ window.onload = () => {
 function render() {
     const members = getMembers();
     const rate = parseFloat(document.getElementById("rate").value) || 5.0;
-    let totalJpy = 0, totalCny = 0;
-    let balance = {};
-    members.forEach(m => balance[m] = 0);
+    let totalJpy = 0;
+    let balanceJpy = {};
+    members.forEach(m => balanceJpy[m] = 0);
 
     bills.forEach(b => {
         totalJpy += b.jpy;
-        const cny = parseFloat(b.cny);
-        totalCny += cny;
-        const per = cny / b.split.length;
-        balance[b.payer] += cny;
-        b.split.forEach(p => balance[p] -= per);
+        const perJpy = b.jpy / b.split.length;
+        balanceJpy[b.payer] += b.jpy;
+        b.split.forEach(p => balanceJpy[p] -= perJpy);
     });
+
+    const totalCny = (totalJpy * rate / 100);
+    const perJpy = members.length ? totalJpy / members.length : 0;
+    const perCny = members.length ? totalCny / members.length : 0;
 
     document.getElementById("totalJpy").innerText = totalJpy.toFixed(0);
     document.getElementById("totalCny").innerText = totalCny.toFixed(2);
-    document.getElementById("perCny").innerText = members.length ? (totalCny / members.length).toFixed(2) : "0";
+    document.getElementById("perJpy").innerText = perJpy.toFixed(0);
+    document.getElementById("perCny").innerText = perCny.toFixed(2);
 
     let resHTML = "";
     members.forEach(m => {
-        const num = Math.round(balance[m] * 100) / 100;
+        const jpy = balanceJpy[m];
+        const cny = jpy * rate / 100;
         const icon = MEMBER_ICONS[m] || "👤";
-        if (num > 0) resHTML += `<div class="result-item income">${icon} ${m} <span>应收 ¥${num.toFixed(2)}</span></div>`;
-        else if (num < 0) resHTML += `<div class="result-item outcome">${icon} ${m} <span>应付 ¥${Math.abs(num).toFixed(2)}</span></div>`;
-        else resHTML += `<div class="result-item clear">${icon} ${m} 已两清</div>`;
+        
+        // ========== 最终结算：加上币种符号 JPY / CNY ==========
+        if (cny > 0.01) {
+            resHTML += `<div class="result-item income">${icon} ${m} <span>应收 JPY ${jpy.toFixed(0)} / CNY ¥${cny.toFixed(2)}</span></div>`;
+        } else if (cny < -0.01) {
+            resHTML += `<div class="result-item outcome">${icon} ${m} <span>应付 JPY ${Math.abs(jpy).toFixed(0)} / CNY ¥${Math.abs(cny).toFixed(2)}</span></div>`;
+        } else {
+            resHTML += `<div class="result-item clear">${icon} ${m} 已两清</div>`;
+        }
     });
     document.getElementById("result").innerHTML = resHTML;
 
     let billHTML = "";
     bills.forEach((b, i) => {
         const icon = MEMBER_ICONS[b.payer] || "👤";
+        const currentCny = (b.jpy * rate / 100).toFixed(2);
         billHTML += `
         <div class="bill-item">
             <div class="title">${b.cate} ${b.title}</div>
             <div>${b.time}｜付款：${icon} ${b.payer}</div>
-            <div>金额：¥${b.cny} (${b.jpy}日元)</div>
+            <div>金额：${b.jpy} 日元 / ¥${currentCny}</div>
             <div>分摊：${b.split.map(m => (MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
             <div class="bill-actions">
                 <button style="background:#5a88b3" onclick="editBill(${i})">编辑</button>
@@ -298,7 +319,6 @@ function addBill() {
     const title = document.getElementById("title").value.trim();
     const payer = document.getElementById("payer").value;
     const jpy = parseFloat(document.getElementById("jpy").value);
-    const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("splitContainer");
     
     if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
@@ -308,16 +328,14 @@ function addBill() {
 
     bills.push({
         time: new Date().toLocaleString(),
-        cate, title, payer, jpy,
-        cny: (jpy * rate / 100).toFixed(2),
-        split: split
+        cate, title, payer, jpy, split
     });
 
     document.getElementById("title").value = "";
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
     
-    saveToLocal();  // 自动保存
+    saveToLocal();
     render();
 }
 
@@ -341,7 +359,6 @@ function saveEdit() {
     const title = document.getElementById("editTitle").value.trim();
     const payer = document.getElementById("editPayer").value;
     const jpy = parseFloat(document.getElementById("editJpy").value);
-    const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("editSplitContainer");
     
     if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
@@ -351,9 +368,7 @@ function saveEdit() {
 
     bills[index] = {
         ...bills[index],
-        cate, title, payer, jpy,
-        cny: (jpy * rate / 100).toFixed(2),
-        split: split
+        cate, title, payer, jpy, split
     };
 
     cancelEdit();
@@ -388,7 +403,8 @@ function useRealRate() {
     if (currentRealRate) {
         document.getElementById("rate").value = currentRealRate;
         saveToLocal();
-        alert("✅ 汇率已更新");
+        render();
+        alert("✅ 汇率已更新，所有金额已同步");
     }
 }
 
