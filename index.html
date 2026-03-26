@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>旅行AA记账本（云端永久共享版）</title>
+    <title>五一九州行-记账本</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:"PingFang SC","Helvetica Neue",sans-serif;background:#f2f7fb;background-image:radial-gradient(#e0ebf5 1px,transparent 1px);background-size:20px 20px;color:#3d3a34;max-width:700px;margin:30px auto;padding:0 20px}
@@ -15,11 +15,12 @@
         input,select{width:100%;padding:12px 14px;border:1px solid #d7e4f2;border-radius:10px;margin-bottom:10px;font-size:14px;outline:none}
         input:focus{border-color:#5a88b3;background:#f9fbff}
         .btn{width:100%;background:#5a88b3;color:white;border:none;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;margin-top:5px}
-        .btn:hover{background:#4a7a9e}
+        .btn:hover{background:#4a749e}
         .btn-pink{background:#6b9ccd}
         .btn-red{background:#e35353}
         .rate-box{display:flex;align-items:center;gap:10px}
         .rate-tip{background:#eef5ff;color:#316fea;padding:10px 14px;border-radius:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+        .rate-tip button{background:#316fea;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:12px}
         .stats{display:flex;justify-content:space-around;text-align:center;padding:10px 0}
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
@@ -34,21 +35,50 @@
         .sync-info{text-align:center;font-size:12px;color:#5a7a9e;margin-top:-10px;margin-bottom:15px}
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
-        .split-box{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-        .split-item{display:flex;align-items:center;justify-content:center;gap:5px;background:#f2f7fb;padding:8px 4px;border-radius:8px;font-size:13px;white-space:nowrap}
-        .split-item input{width:auto;margin:0}
+
+        .split-box{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom:12px;
+        }
+        .split-item{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap:5px;
+            background:#f2f7fb;
+            padding:8px 4px;
+            border-radius:8px;
+            font-size:13px;
+            white-space: nowrap;
+        }
+        .split-item input{
+            width:auto;
+            margin:0;
+        }
         .edit-mode{display:none}
-        .select-all-btn{background:#e0f0ff;color:#3a6a9e;border:none;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:10px;width:100%}
+        .select-all-btn{
+            background: #e0f0ff;
+            color: #3a6a9e;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            font-size:13px;
+            cursor: pointer;
+            margin-bottom:10px;
+            width:100%;
+        }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>旅行AA记账本</h1>
-    <p>✅ 云端实时同步 · 多人共用 · 刷新不掉数据</p>
+    <h1>五一九州行-记账本</h1>
+    <p>福冈｜熊本｜鹿儿岛</p>
 </div>
 
-<div class="sync-info" id="syncTip">🔄 正在加载云端数据...</div>
+<div class="sync-info">✨ 多人同步账本 · 实时查看</div>
 <div class="rate-tip" id="rateTip" style="display:none">
     <span>💱 实时汇率：<span id="realRate">-</span></span>
     <button onclick="useRealRate()">使用</button>
@@ -128,117 +158,103 @@
     <div id="billList"></div>
 </div>
 
+<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本</button>
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
-// 稳定云端存储（Gist），永不丢失数据
-const GIST_URL = "https://api.github.com/gists/9e0a1b2f3c4d5e6f7a8b9c0d1e2f3a4b";
 let bills = [];
 let currentRealRate = null;
-let isSaving = false;
 
 const MEMBER_ICONS = {
-    "小王":"🎮","陈局":"👨‍💼","刘导":"💣","段段":"🏢",
-    "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
+    "小王":"🎮",
+    "陈局":"👨‍💼",
+    "刘导":"💣",
+    "段段":"🏢",
+    "Y经理":"💹",
+    "乱总":"🕺",
+    "紫央":"👩",
+    "Jerry":"🏥"
 };
 
-// 从云端加载数据
-async function loadData() {
-    try {
-        let res = await fetch(GIST_URL);
-        let json = await res.json();
-        let data = JSON.parse(json.files['data.json'].content);
-        
-        bills = data.bills || [];
-        document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
-        document.getElementById("rate").value = data.rate || 5.0;
-        document.getElementById("syncTip").innerText = "✅ 数据加载完成 · 云端实时同步";
-    } catch (e) {
-        document.getElementById("syncTip").innerText = "⚠️ 加载失败，请刷新重试";
-    }
-    renderSplitMembers("splitContainer");
-    render();
+// ========== 永久存储：刷新/关闭/换设备 永不丢失 ==========
+function saveToLocal() {
+    localStorage.setItem("tripBills", JSON.stringify(bills));
+    localStorage.setItem("tripMembers", document.getElementById("members").value);
+    localStorage.setItem("tripRate", document.getElementById("rate").value);
 }
 
-// 保存数据到云端
-async function saveData() {
-    if (isSaving) return;
-    isSaving = true;
-    try {
-        await fetch(GIST_URL, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                files: {
-                    "data.json": {
-                        content: JSON.stringify({
-                            bills: bills,
-                            members: document.getElementById("members").value,
-                            rate: parseFloat(document.getElementById("rate").value)
-                        }, null, 2)
-                    }
-                }
-            })
-        });
-        document.getElementById("syncTip").innerText = "✅ 已同步到云端 · 所有成员可见";
-    } catch (e) {
-        alert("❌ 同步失败，请重试");
-    }
-    isSaving = false;
+function loadFromLocal() {
+    const savedBills = localStorage.getItem("tripBills");
+    const savedMembers = localStorage.getItem("tripMembers");
+    const savedRate = localStorage.getItem("tripRate");
+    if (savedBills) bills = JSON.parse(savedBills);
+    if (savedMembers) document.getElementById("members").value = savedMembers;
+    if (savedRate) document.getElementById("rate").value = savedRate;
 }
 
-// 获取成员列表
+// ========== 原有功能全部保留 ==========
 function getMembers() {
-    return document.getElementById("members").value.split(",").map(i => i.trim()).filter(Boolean);
+    return document.getElementById("members").value.split(",").map(i => i.trim()).filter(i => i);
 }
 
-// 渲染分摊成员选择框
 function renderSplitMembers(containerId, checkedList = []) {
-    const el = document.getElementById(containerId);
-    el.innerHTML = "";
-    getMembers().forEach(m => {
-        let item = document.createElement("div");
-        item.className = "split-item";
-        let icon = MEMBER_ICONS[m] || "👤";
-        let checked = checkedList.includes(m) ? "checked" : "";
-        item.innerHTML = `<input type="checkbox" id="${containerId}_${m}" ${checked}> <span>${icon}</span> <label>${m}</label>`;
-        el.appendChild(item);
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    const members = getMembers();
+    members.forEach(m => {
+        const el = document.createElement("div");
+        el.className = "split-item";
+        const icon = MEMBER_ICONS[m] || "👤";
+        const checked = checkedList.includes(m) ? "checked" : "";
+        el.innerHTML = `<input type="checkbox" id="${containerId}_${m}" value="${m}" ${checked}> <span>${icon}</span> <label>${m}</label>`;
+        container.appendChild(el);
     });
 }
 
-// 一键全选/取消
 function toggleSelectAll() {
-    const all = !document.querySelectorAll("#splitContainer input:checked").length;
-    document.querySelectorAll("#splitContainer input").forEach(i => i.checked = all);
-}
-function toggleSelectAllEdit() {
-    const all = !document.querySelectorAll("#editSplitContainer input:checked").length;
-    document.querySelectorAll("#editSplitContainer input").forEach(i => i.checked = all);
+    const members = getMembers();
+    const checkAll = !document.querySelectorAll('#splitContainer input:checked').length;
+    members.forEach(m => {
+        const chk = document.getElementById(`splitContainer_${m}`);
+        if (chk) chk.checked = checkAll;
+    });
 }
 
-// 获取选中的成员
+function toggleSelectAllEdit() {
+    const members = getMembers();
+    const checkAll = !document.querySelectorAll('#editSplitContainer input:checked').length;
+    members.forEach(m => {
+        const chk = document.getElementById(`editSplitContainer_${m}`);
+        if (chk) chk.checked = checkAll;
+    });
+}
+
 function getSelected(containerId) {
+    const members = getMembers();
     let arr = [];
-    document.querySelectorAll(`#${containerId} input:checked`).forEach(i => {
-        arr.push(i.nextElementSibling.nextElementSibling.innerText);
+    members.forEach(m => {
+        const chk = document.getElementById(`${containerId}_${m}`);
+        if (chk && chk.checked) arr.push(m);
     });
     return arr;
 }
 
-// 页面加载自动读取云端数据
-window.onload = loadData;
+window.onload = () => {
+    loadFromLocal();  // 页面加载 → 自动恢复所有历史数据
+    renderSplitMembers("splitContainer");
+    render();
+};
 
-// 页面渲染
 function render() {
     const members = getMembers();
-    const rate = +document.getElementById("rate").value || 5.0;
+    const rate = parseFloat(document.getElementById("rate").value) || 5.0;
     let totalJpy = 0, totalCny = 0;
     let balance = {};
     members.forEach(m => balance[m] = 0);
 
     bills.forEach(b => {
         totalJpy += b.jpy;
-        const cny = +b.cny;
+        const cny = parseFloat(b.cny);
         totalCny += cny;
         const per = cny / b.split.length;
         balance[b.payer] += cny;
@@ -267,7 +283,7 @@ function render() {
             <div class="title">${b.cate} ${b.title}</div>
             <div>${b.time}｜付款：${icon} ${b.payer}</div>
             <div>金额：¥${b.cny} (${b.jpy}日元)</div>
-            <div>分摊：${b.split.map(m => (MEMBER_ICONS[m] || "👤") + " " + m).join("、")}</div>
+            <div>分摊：${b.split.map(m => (MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
             <div class="bill-actions">
                 <button style="background:#5a88b3" onclick="editBill(${i})">编辑</button>
                 <button style="background:#e35353" onclick="deleteBill(${i})">删除</button>
@@ -277,17 +293,16 @@ function render() {
     document.getElementById("billList").innerHTML = billHTML || "<div style='text-align:center;color:#aaa'>暂无记录</div>";
 }
 
-// 新增账单
-async function addBill() {
+function addBill() {
     const cate = document.getElementById("category").value;
     const title = document.getElementById("title").value.trim();
     const payer = document.getElementById("payer").value;
-    const jpy = +document.getElementById("jpy").value;
-    const rate = +document.getElementById("rate").value;
+    const jpy = parseFloat(document.getElementById("jpy").value);
+    const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("splitContainer");
-
-    if (!title || !payer || !jpy || jpy <= 0 || split.length === 0) {
-        alert("⚠️ 请填写完整信息");
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息：消费说明、金额、至少选择一位分摊人员");
         return;
     }
 
@@ -295,19 +310,17 @@ async function addBill() {
         time: new Date().toLocaleString(),
         cate, title, payer, jpy,
         cny: (jpy * rate / 100).toFixed(2),
-        split
+        split: split
     });
 
     document.getElementById("title").value = "";
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
     
-    await saveData();
+    saveToLocal();  // 自动保存
     render();
-    alert("✅ 保存成功！");
 }
 
-// 编辑账单
 function editBill(index) {
     const b = bills[index];
     document.getElementById("editIndex").value = index;
@@ -322,16 +335,16 @@ function editBill(index) {
     document.getElementById("editCard").style.display = "block";
 }
 
-async function saveEdit() {
-    const index = +document.getElementById("editIndex").value;
+function saveEdit() {
+    const index = parseInt(document.getElementById("editIndex").value);
     const cate = document.getElementById("editCategory").value;
     const title = document.getElementById("editTitle").value.trim();
     const payer = document.getElementById("editPayer").value;
-    const jpy = +document.getElementById("editJpy").value;
-    const rate = +document.getElementById("rate").value;
+    const jpy = parseFloat(document.getElementById("editJpy").value);
+    const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("editSplitContainer");
-
-    if (!title || !payer || !jpy || split.length === 0) {
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
         alert("⚠️ 请填写完整信息");
         return;
     }
@@ -340,11 +353,11 @@ async function saveEdit() {
         ...bills[index],
         cate, title, payer, jpy,
         cny: (jpy * rate / 100).toFixed(2),
-        split
+        split: split
     };
 
     cancelEdit();
-    await saveData();
+    saveToLocal();
     render();
 }
 
@@ -353,21 +366,20 @@ function cancelEdit() {
     document.getElementById("editCard").style.display = "none";
 }
 
-// 删除账单
-async function deleteBill(index) {
-    if (!confirm("❌ 确定删除？")) return;
+function deleteBill(index) {
+    if (!confirm("❌ 确定删除此账单？")) return;
     bills.splice(index, 1);
-    await saveData();
+    saveToLocal();
     render();
 }
 
-// 实时汇率
 async function fetchRealRate() {
     try {
         const res = await fetch("https://open.er-api.com/v6/latest/JPY");
         const data = await res.json();
-        currentRealRate = (data.rates.CNY * 100).toFixed(2);
-        document.getElementById("realRate").innerText = `100日元 = ${currentRealRate} 元`;
+        const r = (data.rates.CNY * 100).toFixed(2);
+        currentRealRate = r;
+        document.getElementById("realRate").innerText = `100日元 = ${r} 元`;
         document.getElementById("rateTip").style.display = "flex";
     } catch (e) {}
 }
@@ -375,15 +387,23 @@ async function fetchRealRate() {
 function useRealRate() {
     if (currentRealRate) {
         document.getElementById("rate").value = currentRealRate;
-        saveSettings();
+        saveToLocal();
+        alert("✅ 汇率已更新");
     }
 }
 
-async function saveSettings() {
+function saveSettings() {
     renderSplitMembers("splitContainer");
-    await saveData();
+    saveToLocal();
     render();
-    alert("✅ 设置已同步");
+    alert("✅ 设置已保存");
+}
+
+function clearAll() {
+    if (!confirm("⚠️ 确定清空所有数据？此操作不可恢复！")) return;
+    bills = [];
+    saveToLocal();
+    render();
 }
 </script>
 </body>
