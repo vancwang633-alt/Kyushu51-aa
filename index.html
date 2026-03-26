@@ -58,6 +58,17 @@
             margin:0;
         }
         .edit-mode{display:none}
+        .select-all-btn{
+            background: #e0f0ff;
+            color: #3a6a9e;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            font-size:13px;
+            cursor: pointer;
+            margin-bottom:10px;
+            width:100%;
+        }
     </style>
 </head>
 <body>
@@ -109,6 +120,7 @@
     </select>
     <input type="number" id="jpy" placeholder="金额（日元）">
     <h3>👥 选择分摊人员</h3>
+    <button class="select-all-btn" onclick="toggleSelectAll()">✅ 一键全选 / 取消全选</button>
     <div class="split-box" id="splitContainer"></div>
     <button class="btn" onclick="addBill()">✅ 保存账单</button>
 </div>
@@ -121,6 +133,7 @@
     <select id="editPayer"></select>
     <input type="number" id="editJpy">
     <h3>👥 分摊人员</h3>
+    <button class="select-all-btn" onclick="toggleSelectAllEdit()">✅ 一键全选 / 取消全选</button>
     <div class="split-box" id="editSplitContainer"></div>
     <button class="btn" onclick="saveEdit()">💾 保存修改</button>
     <button class="btn" onclick="cancelEdit()">❌ 取消</button>
@@ -149,7 +162,6 @@
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
-const WEBHOOK = "https://api.npoint.io/fa2a9a6c125b4f2125e9";
 let bills = [];
 let currentRealRate = null;
 
@@ -182,6 +194,26 @@ function renderSplitMembers(containerId, checkedList = []) {
     });
 }
 
+// 一键全选/取消（新增页面）
+function toggleSelectAll() {
+    const members = getMembers();
+    const checkAll = !document.querySelectorAll('#splitContainer input:checked').length;
+    members.forEach(m => {
+        const chk = document.getElementById(`splitContainer_${m}`);
+        if (chk) chk.checked = checkAll;
+    });
+}
+
+// 一键全选/取消（编辑页面）
+function toggleSelectAllEdit() {
+    const members = getMembers();
+    const checkAll = !document.querySelectorAll('#editSplitContainer input:checked').length;
+    members.forEach(m => {
+        const chk = document.getElementById(`editSplitContainer_${m}`);
+        if (chk) chk.checked = checkAll;
+    });
+}
+
 function getSelected(containerId) {
     const members = getMembers();
     let arr = [];
@@ -192,125 +224,10 @@ function getSelected(containerId) {
     return arr;
 }
 
-window.onload = async () => {
+window.onload = () => {
     renderSplitMembers("splitContainer");
-    await loadFromCloud();
-    fetchRealRate();
     render();
 };
-
-async function loadFromCloud() {
-    try {
-        let res = await fetch(WEBHOOK);
-        let data = await res.json();
-        bills = data.bills || [];
-        document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
-        document.getElementById("rate").value = data.rate || 5.0;
-        renderSplitMembers("splitContainer");
-        render();
-    } catch (e) {}
-}
-
-async function saveToCloud() {
-    const data = {
-        members: document.getElementById("members").value,
-        rate: parseFloat(document.getElementById("rate").value),
-        bills: bills
-    };
-    await fetch(WEBHOOK, {
-        method: "PUT",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" }
-    });
-    render();
-}
-
-function saveSettings() {
-    renderSplitMembers("splitContainer");
-    saveToCloud();
-    alert("✅ 设置已保存");
-}
-
-async function addBill() {
-    const cate = document.getElementById("category").value;
-    const title = document.getElementById("title").value.trim();
-    const payer = document.getElementById("payer").value;
-    const jpy = parseFloat(document.getElementById("jpy").value);
-    const rate = parseFloat(document.getElementById("rate").value);
-    const split = getSelected("splitContainer");
-    
-    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
-        alert("⚠️ 请填写完整信息：消费说明、金额、至少选择一位分摊人员");
-        return;
-    }
-
-    bills.push({
-        time: new Date().toLocaleString(),
-        cate, title, payer, jpy,
-        cny: (jpy * rate / 100).toFixed(2),
-        split: split
-    });
-
-    document.getElementById("title").value = "";
-    document.getElementById("jpy").value = "";
-    renderSplitMembers("splitContainer");
-    
-    await saveToCloud();
-    render();
-    alert("✅ 账单保存成功！");
-}
-
-function editBill(index) {
-    const b = bills[index];
-    document.getElementById("editIndex").value = index;
-    document.getElementById("editCategory").innerHTML = document.getElementById("category").innerHTML;
-    document.getElementById("editCategory").value = b.cate;
-    document.getElementById("editTitle").value = b.title;
-    document.getElementById("editPayer").innerHTML = document.getElementById("payer").innerHTML;
-    document.getElementById("editPayer").value = b.payer;
-    document.getElementById("editJpy").value = b.jpy;
-    renderSplitMembers("editSplitContainer", b.split);
-    document.getElementById("addCard").style.display = "none";
-    document.getElementById("editCard").style.display = "block";
-}
-
-async function saveEdit() {
-    const index = parseInt(document.getElementById("editIndex").value);
-    const cate = document.getElementById("editCategory").value;
-    const title = document.getElementById("editTitle").value.trim();
-    const payer = document.getElementById("editPayer").value;
-    const jpy = parseFloat(document.getElementById("editJpy").value);
-    const rate = parseFloat(document.getElementById("rate").value);
-    const split = getSelected("editSplitContainer");
-    
-    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
-        alert("⚠️ 请填写完整信息");
-        return;
-    }
-
-    bills[index] = {
-        ...bills[index],
-        cate, title, payer, jpy,
-        cny: (jpy * rate / 100).toFixed(2),
-        split: split
-    };
-
-    cancelEdit();
-    await saveToCloud();
-    render();
-}
-
-function cancelEdit() {
-    document.getElementById("addCard").style.display = "block";
-    document.getElementById("editCard").style.display = "none";
-}
-
-async function deleteBill(index) {
-    if (!confirm("❌ 确定删除此账单？")) return;
-    bills.splice(index, 1);
-    await saveToCloud();
-    render();
-}
 
 function render() {
     const members = getMembers();
@@ -360,6 +277,84 @@ function render() {
     document.getElementById("billList").innerHTML = billHTML || "<div style='text-align:center;color:#aaa'>暂无记录</div>";
 }
 
+function addBill() {
+    const cate = document.getElementById("category").value;
+    const title = document.getElementById("title").value.trim();
+    const payer = document.getElementById("payer").value;
+    const jpy = parseFloat(document.getElementById("jpy").value);
+    const rate = parseFloat(document.getElementById("rate").value);
+    const split = getSelected("splitContainer");
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息：消费说明、金额、至少选择一位分摊人员");
+        return;
+    }
+
+    bills.push({
+        time: new Date().toLocaleString(),
+        cate, title, payer, jpy,
+        cny: (jpy * rate / 100).toFixed(2),
+        split: split
+    });
+
+    document.getElementById("title").value = "";
+    document.getElementById("jpy").value = "";
+    renderSplitMembers("splitContainer");
+    
+    render();
+    alert("✅ 账单保存成功！");
+}
+
+function editBill(index) {
+    const b = bills[index];
+    document.getElementById("editIndex").value = index;
+    document.getElementById("editCategory").innerHTML = document.getElementById("category").innerHTML;
+    document.getElementById("editCategory").value = b.cate;
+    document.getElementById("editTitle").value = b.title;
+    document.getElementById("editPayer").innerHTML = document.getElementById("payer").innerHTML;
+    document.getElementById("editPayer").value = b.payer;
+    document.getElementById("editJpy").value = b.jpy;
+    renderSplitMembers("editSplitContainer", b.split);
+    document.getElementById("addCard").style.display = "none";
+    document.getElementById("editCard").style.display = "block";
+}
+
+function saveEdit() {
+    const index = parseInt(document.getElementById("editIndex").value);
+    const cate = document.getElementById("editCategory").value;
+    const title = document.getElementById("editTitle").value.trim();
+    const payer = document.getElementById("editPayer").value;
+    const jpy = parseFloat(document.getElementById("editJpy").value);
+    const rate = parseFloat(document.getElementById("rate").value);
+    const split = getSelected("editSplitContainer");
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息");
+        return;
+    }
+
+    bills[index] = {
+        ...bills[index],
+        cate, title, payer, jpy,
+        cny: (jpy * rate / 100).toFixed(2),
+        split: split
+    };
+
+    cancelEdit();
+    render();
+}
+
+function cancelEdit() {
+    document.getElementById("addCard").style.display = "block";
+    document.getElementById("editCard").style.display = "none";
+}
+
+function deleteBill(index) {
+    if (!confirm("❌ 确定删除此账单？")) return;
+    bills.splice(index, 1);
+    render();
+}
+
 async function fetchRealRate() {
     try {
         const res = await fetch("https://open.er-api.com/v6/latest/JPY");
@@ -374,14 +369,19 @@ async function fetchRealRate() {
 function useRealRate() {
     if (currentRealRate) {
         document.getElementById("rate").value = currentRealRate;
-        saveSettings();
+        alert("✅ 汇率已更新");
     }
 }
 
-async function clearAll() {
+function saveSettings() {
+    renderSplitMembers("splitContainer");
+    render();
+    alert("✅ 设置已保存");
+}
+
+function clearAll() {
     if (!confirm("⚠️ 确定清空所有数据？此操作不可恢复！")) return;
     bills = [];
-    await saveToCloud();
     render();
 }
 </script>
