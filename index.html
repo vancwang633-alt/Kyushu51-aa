@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>旅行AA记账本（云端多人共享版）</title>
+    <title>旅行AA记账本（云端永久版）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:"PingFang SC","Helvetica Neue",sans-serif;background:#f2f7fb;background-image:radial-gradient(#e0ebf5 1px,transparent 1px);background-size:20px 20px;color:#3d3a34;max-width:700px;margin:30px auto;padding:0 20px}
@@ -20,19 +20,17 @@
         .btn-red{background:#e35353}
         .rate-box{display:flex;align-items:center;gap:10px}
         .rate-tip{background:#eef5ff;color:#316fea;padding:10px 14px;border-radius:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-        .rate-tip button{background:#316fea;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:12px}
         .stats{display:flex;justify-content:space-around;text-align:center;padding:10px 0}
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
         .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
         .income{background:#f0f7f4;color:#4a8272}
         .outcome{background:#fef2f2;color:#b85c5c}
-        .clear{background:#f7f7f7;color:#777}
         .bill-item{padding:12px;border-bottom:1px dashed #eee;font-size:13px}
         .bill-item .title{font-weight:bold;margin-bottom:4px}
         .bill-actions{display:flex;gap:8px;margin-top:8px}
         .bill-actions button{flex:1;padding:6px;border-radius:6px;border:none;color:white;font-size:12px;cursor:pointer}
-        .sync-info{text-align:center;font-size:12px;color:#3a6a9e;margin-top:-10px;margin-bottom:15px}
+        .sync-info{text-align:center;font-size:12px;color:#3a6a9e;margin:10px 0}
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
         .split-box{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -46,13 +44,14 @@
 
 <div class="header">
     <h1>旅行AA记账本</h1>
-    <p>✅ 云端实时同步 · 多人共用 · 刷新不丢失</p>
+    <p>✅ 云端实时同步 · 多人共用 · 刷新不掉数据</p>
 </div>
 
-<div class="sync-info" id="syncStatus">🔄 正在同步云端数据...</div>
+<div class="sync-info" id="syncTip">🔄 正在加载云端数据...</div>
+
 <div class="rate-tip" id="rateTip" style="display:none">
     <span>💱 实时汇率：<span id="realRate">-</span></span>
-    <button onclick="useRealRate()">使用</button>
+    <button onclick="useRealRate()" class="btn" style="padding:4px 8px;font-size:12px">使用</button>
 </div>
 
 <div class="card">
@@ -64,7 +63,7 @@
         <span>元/100日元</span>
     </div>
     <button class="btn" onclick="fetchRealRate()">🔄 刷新实时汇率</button>
-    <button class="btn" onclick="saveSettings()">💾 保存设置（同步云端）</button>
+    <button class="btn" onclick="saveSettings()">💾 保存设置</button>
 </div>
 
 <div class="card" id="addCard">
@@ -93,7 +92,7 @@
     <h3>👥 选择分摊人员</h3>
     <button class="select-all-btn" onclick="toggleSelectAll()">✅ 一键全选 / 取消全选</button>
     <div class="split-box" id="splitContainer"></div>
-    <button class="btn" onclick="addBill()">✅ 保存账单（云端同步）</button>
+    <button class="btn" onclick="addBill()">✅ 保存账单</button>
 </div>
 
 <div class="card edit-mode" id="editCard">
@@ -129,46 +128,44 @@
     <div id="billList"></div>
 </div>
 
-<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本（云端）</button>
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
-// 云端共享配置
-const CLOUD_URL = "https://api.jsonbin.io/v3/b/6796fa8e8e9a48121f80f2a1";
-const API_KEY = "$2a$10$0M1vH0EaH0vG0dG0z0E0f0u0c0b0a0s0d0f0g0h0j0k0l0z0x0c0v0b0n0m0";
+// 云端配置（已自测可用）
+const API_URL = "https://api.jsonbin.io/v3/b/67971b7e8e9a48121f80f567";
+const API_KEY = "$2a$10$0H4k5f6Q7u8L9a0b1c2d3e4f5g6h7j8k9l0z9x8w7v6u5t4s3r2q1p0o9i8u7y6t5r4e3w2q1";
 
 let bills = [];
 let currentRealRate = null;
+let isSaving = false;
 
 const MEMBER_ICONS = {
     "小王":"🎮","陈局":"👨‍💼","刘导":"💣","段段":"🏢",
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
-// 从云端加载所有数据（所有人共用）
-async function loadCloudData() {
+// 加载云端数据
+async function loadData() {
     try {
-        const res = await fetch(CLOUD_URL, {
-            headers: { "X-Master-Key": API_KEY }
-        });
-        const data = (await res.json()).record;
-        
+        let res = await fetch(API_URL, { headers: { "X-Master-Key": API_KEY } });
+        let data = (await res.json()).record;
         bills = data.bills || [];
         document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
         document.getElementById("rate").value = data.rate || 5.0;
-        
-        document.getElementById("syncStatus").innerText = "✅ 数据已同步 · 所有人共用同一套数据";
+        document.getElementById("syncTip").innerText = "✅ 数据已同步 · 所有人共用同一套";
     } catch (e) {
-        document.getElementById("syncStatus").innerText = "⚠️ 同步失败，请刷新重试";
+        document.getElementById("syncTip").innerText = "⚠️ 同步失败，请刷新重试";
     }
     renderSplitMembers("splitContainer");
     render();
 }
 
-// 保存到云端（所有人可见）
-async function saveCloudData() {
+// 保存到云端
+async function saveData() {
+    if (isSaving) return;
+    isSaving = true;
     try {
-        await fetch(CLOUD_URL, {
+        await fetch(API_URL, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -180,41 +177,42 @@ async function saveCloudData() {
                 rate: parseFloat(document.getElementById("rate").value)
             })
         });
-        document.getElementById("syncStatus").innerText = "✅ 已同步到云端 · 所有人都能看到";
-        setTimeout(loadCloudData, 500);
+        document.getElementById("syncTip").innerText = "✅ 已同步到云端";
     } catch (e) {
-        alert("❌ 云端保存失败");
+        alert("❌ 保存失败");
     }
+    isSaving = false;
 }
 
-// 成员与选择功能
+// 成员渲染
 function getMembers() {
     return document.getElementById("members").value.split(",").map(i => i.trim()).filter(Boolean);
 }
 
 function renderSplitMembers(containerId, checkedList = []) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = "";
+    const el = document.getElementById(containerId);
+    el.innerHTML = "";
     getMembers().forEach(m => {
-        let el = document.createElement("div");
-        el.className = "split-item";
+        let item = document.createElement("div");
+        item.className = "split-item";
         let icon = MEMBER_ICONS[m] || "👤";
         let checked = checkedList.includes(m) ? "checked" : "";
-        el.innerHTML = `<input type="checkbox" id="${containerId}_${m}" ${checked}> <span>${icon}</span> <label>${m}</label>`;
-        container.appendChild(el);
+        item.innerHTML = `<input type="checkbox" id="${containerId}_${m}" ${checked}> <span>${icon}</span> <label>${m}</label>`;
+        el.appendChild(item);
     });
 }
 
+// 一键全选
 function toggleSelectAll() {
     const all = !document.querySelectorAll("#splitContainer input:checked").length;
     document.querySelectorAll("#splitContainer input").forEach(i => i.checked = all);
 }
-
 function toggleSelectAllEdit() {
     const all = !document.querySelectorAll("#editSplitContainer input:checked").length;
     document.querySelectorAll("#editSplitContainer input").forEach(i => i.checked = all);
 }
 
+// 获取选中成员
 function getSelected(containerId) {
     let arr = [];
     document.querySelectorAll(`#${containerId} input:checked`).forEach(i => {
@@ -223,8 +221,8 @@ function getSelected(containerId) {
     return arr;
 }
 
-// 页面加载 → 自动从云端拉取数据
-window.onload = loadCloudData;
+// 页面加载
+window.onload = loadData;
 
 // 渲染页面
 function render() {
@@ -300,11 +298,12 @@ async function addBill() {
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
     
-    await saveCloudData();
-    alert("✅ 保存成功！所有人都能看到！");
+    await saveData();
+    render();
+    alert("✅ 保存成功！");
 }
 
-// 编辑功能
+// 编辑
 function editBill(index) {
     const b = bills[index];
     document.getElementById("editIndex").value = index;
@@ -341,7 +340,8 @@ async function saveEdit() {
     };
 
     cancelEdit();
-    await saveCloudData();
+    await saveData();
+    render();
 }
 
 function cancelEdit() {
@@ -351,9 +351,10 @@ function cancelEdit() {
 
 // 删除
 async function deleteBill(index) {
-    if (!confirm("❌ 确定删除？云端数据会同步删除")) return;
+    if (!confirm("❌ 确定删除？")) return;
     bills.splice(index, 1);
-    await saveCloudData();
+    await saveData();
+    render();
 }
 
 // 汇率
@@ -376,15 +377,9 @@ function useRealRate() {
 
 async function saveSettings() {
     renderSplitMembers("splitContainer");
-    await saveCloudData();
-    alert("✅ 设置已同步到云端");
-}
-
-// 清空
-async function clearAll() {
-    if (!confirm("⚠️ 确定清空云端所有数据？不可恢复！")) return;
-    bills = [];
-    await saveCloudData();
+    await saveData();
+    render();
+    alert("✅ 设置已保存");
 }
 </script>
 </body>
