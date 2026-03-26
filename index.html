@@ -17,17 +17,14 @@
         .btn{width:100%;background:#5a88b3;color:white;border:none;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;margin-top:5px}
         .btn:hover{background:#4a749e}
         .btn-pink{background:#6b9ccd}
-        .btn-pink:hover{background:#5a88b3}
         .btn-red{background:#e35353}
-        .btn-red:hover{background:#c43c3c}
         .rate-box{display:flex;align-items:center;gap:10px}
-        .rate-box input{margin-bottom:0}
         .rate-tip{background:#eef5ff;color:#316fea;padding:10px 14px;border-radius:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
         .rate-tip button{background:#316fea;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:12px}
         .stats{display:flex;justify-content:space-around;text-align:center;padding:10px 0}
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
-        .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between}
+        .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
         .income{background:#f0f7f4;color:#4a8272}
         .outcome{background:#fef2f2;color:#b85c5c}
         .clear{background:#f7f7f7;color:#777}
@@ -38,8 +35,28 @@
         .sync-info{text-align:center;font-size:12px;color:#5a7a9e;margin-top:-10px;margin-bottom:15px}
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
-        .split-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-        .split-item{display:flex;align-items:center;gap:6px;background:#f2f7fb;padding:6px 10px;border-radius:8px;font-size:14px}
+
+        .split-box{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom:12px;
+        }
+        .split-item{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap:5px;
+            background:#f2f7fb;
+            padding:8px 4px;
+            border-radius:8px;
+            font-size:13px;
+            white-space: nowrap;
+        }
+        .split-item input{
+            width:auto;
+            margin:0;
+        }
         .edit-mode{display:none}
     </style>
 </head>
@@ -58,7 +75,7 @@
 
 <div class="card">
     <h3><span class="sakura">❀</span> 旅行成员 & 汇率</h3>
-    <input type="text" id="members" value="小王,小陈,刘导,段段,Y经理,乱总,紫央,Jerry">
+    <input type="text" id="members" value="小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry">
     <div class="rate-box">
         <span>💴</span>
         <input type="number" id="rate" step="0.01" value="5.0">
@@ -81,18 +98,18 @@
     </select>
     <input type="text" id="title" placeholder="消费说明">
     <select id="payer">
-        <option value="小王">小王</option>
-        <option value="小陈">小陈</option>
-        <option value="刘导">刘导</option>
-        <option value="段段">段段</option>
-        <option value="Y经理">Y经理</option>
-        <option value="乱总">乱总</option>
-        <option value="紫央">紫央</option>
-        <option value="Jerry">Jerry</option>
+        <option value="小王">🎮 小王</option>
+        <option value="陈局">👨‍💼 陈局</option>
+        <option value="刘导">💣 刘导</option>
+        <option value="段段">🏢 段段</option>
+        <option value="Y经理">💹 Y经理</option>
+        <option value="乱总">🕺 乱总</option>
+        <option value="紫央">👩 紫央</option>
+        <option value="Jerry">🏥 Jerry</option>
     </select>
     <input type="number" id="jpy" placeholder="金额（日元）">
     <h3>👥 选择分摊人员</h3>
-    <div id="splitContainer"></div>
+    <div class="split-box" id="splitContainer"></div>
     <button class="btn" onclick="addBill()">✅ 保存账单</button>
 </div>
 
@@ -104,7 +121,7 @@
     <select id="editPayer"></select>
     <input type="number" id="editJpy">
     <h3>👥 分摊人员</h3>
-    <div id="editSplitContainer"></div>
+    <div class="split-box" id="editSplitContainer"></div>
     <button class="btn" onclick="saveEdit()">💾 保存修改</button>
     <button class="btn" onclick="cancelEdit()">❌ 取消</button>
 </div>
@@ -114,7 +131,7 @@
     <div class="stats">
         <div><div class="num" id="totalJpy">0</div><div class="label">总日元</div></div>
         <div><div class="num" id="totalCny">0</div><div class="label">总人民币</div></div>
-        <div><div class="num" id="perCny">0</div><div class="label">人均总支出</div></div>
+        <div><div class="num" id="perCny">0</div><div class="label">人均支出</div></div>
     </div>
 </div>
 
@@ -128,13 +145,24 @@
     <div id="billList"></div>
 </div>
 
-<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本（旅行结束用）</button>
+<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本</button>
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
 const WEBHOOK = "https://api.npoint.io/fa2a9a6c125b4f2125e9";
 let bills = [];
 let currentRealRate = null;
+
+const MEMBER_ICONS = {
+    "小王":"🎮",
+    "陈局":"👨‍💼",
+    "刘导":"💣",
+    "段段":"🏢",
+    "Y经理":"💹",
+    "乱总":"🕺",
+    "紫央":"👩",
+    "Jerry":"🏥"
+};
 
 function getMembers() {
     return document.getElementById("members").value.split(",").map(i => i.trim()).filter(i => i);
@@ -147,8 +175,9 @@ function renderSplitMembers(containerId, checkedList = []) {
     members.forEach(m => {
         const el = document.createElement("div");
         el.className = "split-item";
+        const icon = MEMBER_ICONS[m] || "👤";
         const checked = checkedList.includes(m) ? "checked" : "";
-        el.innerHTML = `<input type="checkbox" id="${containerId}_${m}" value="${m}" ${checked}> <label>${m}</label>`;
+        el.innerHTML = `<input type="checkbox" id="${containerId}_${m}" value="${m}" ${checked}> <span>${icon}</span> <label>${m}</label>`;
         container.appendChild(el);
     });
 }
@@ -168,7 +197,7 @@ window.onload = async () => {
     await loadFromCloud();
     fetchRealRate();
     render();
-    setInterval(loadFromCloud, 8000);
+    setInterval(loadFromCloud, 10000);
 };
 
 async function loadFromCloud() {
@@ -176,7 +205,7 @@ async function loadFromCloud() {
         let res = await fetch(WEBHOOK);
         let data = await res.json();
         bills = data.bills || [];
-        document.getElementById("members").value = data.members || "小王,小陈,刘导,段段,Y经理,乱总,紫央,Jerry";
+        document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
         document.getElementById("rate").value = data.rate || 5.0;
         renderSplitMembers("splitContainer");
         render();
@@ -186,7 +215,7 @@ async function loadFromCloud() {
 async function saveToCloud() {
     const data = {
         members: document.getElementById("members").value,
-        rate: document.getElementById("rate").value,
+        rate: parseFloat(document.getElementById("rate").value),
         bills: bills
     };
     await fetch(WEBHOOK, {
@@ -199,7 +228,7 @@ async function saveToCloud() {
 function saveSettings() {
     renderSplitMembers("splitContainer");
     saveToCloud();
-    alert("已保存！");
+    alert("✅ 设置已保存");
 }
 
 async function addBill() {
@@ -209,7 +238,11 @@ async function addBill() {
     const jpy = parseFloat(document.getElementById("jpy").value);
     const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("splitContainer");
-    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) return alert("请填完整");
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息：消费说明、金额、至少选择一位分摊人员");
+        return;
+    }
 
     bills.push({
         time: new Date().toLocaleString(),
@@ -247,7 +280,11 @@ async function saveEdit() {
     const jpy = parseFloat(document.getElementById("editJpy").value);
     const rate = parseFloat(document.getElementById("rate").value);
     const split = getSelected("editSplitContainer");
-    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) return alert("请填完整");
+    
+    if (!title || !payer || isNaN(jpy) || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息");
+        return;
+    }
 
     bills[index] = {
         ...bills[index],
@@ -267,7 +304,7 @@ function cancelEdit() {
 }
 
 async function deleteBill(index) {
-    if (!confirm("确定删除此账单？")) return;
+    if (!confirm("❌ 确定删除此账单？")) return;
     bills.splice(index, 1);
     await saveToCloud();
     render();
@@ -291,25 +328,27 @@ function render() {
 
     document.getElementById("totalJpy").innerText = totalJpy.toFixed(0);
     document.getElementById("totalCny").innerText = totalCny.toFixed(2);
-    document.getElementById("perCny").innerText = (members.length ? (totalCny / members.length).toFixed(2) : 0);
+    document.getElementById("perCny").innerText = members.length ? (totalCny / members.length).toFixed(2) : "0";
 
     let resHTML = "";
     members.forEach(m => {
-        const num = parseFloat(balance[m].toFixed(2));
-        if (num > 0) resHTML += `<div class="result-item income">${m} <span>应收 ¥${num.toFixed(2)}</span></div>`;
-        else if (num < 0) resHTML += `<div class="result-item outcome">${m} <span>应付 ¥${Math.abs(num).toFixed(2)}</span></div>`;
-        else resHTML += `<div class="result-item clear">${m} 已两清</div>`;
+        const num = Math.round(balance[m] * 100) / 100;
+        const icon = MEMBER_ICONS[m] || "👤";
+        if (num > 0) resHTML += `<div class="result-item income">${icon} ${m} <span>应收 ¥${num.toFixed(2)}</span></div>`;
+        else if (num < 0) resHTML += `<div class="result-item outcome">${icon} ${m} <span>应付 ¥${Math.abs(num).toFixed(2)}</span></div>`;
+        else resHTML += `<div class="result-item clear">${icon} ${m} 已两清</div>`;
     });
     document.getElementById("result").innerHTML = resHTML;
 
     let billHTML = "";
     bills.forEach((b, i) => {
+        const icon = MEMBER_ICONS[b.payer] || "👤";
         billHTML += `
         <div class="bill-item">
             <div class="title">${b.cate} ${b.title}</div>
-            <div>${b.time}｜付款：${b.payer}</div>
+            <div>${b.time}｜付款：${icon} ${b.payer}</div>
             <div>金额：¥${b.cny} (${b.jpy}日元)</div>
-            <div>分摊：${b.split.join("、")}</div>
+            <div>分摊：${b.split.map(m => (MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
             <div class="bill-actions">
                 <button style="background:#5a88b3" onclick="editBill(${i})">编辑</button>
                 <button style="background:#e35353" onclick="deleteBill(${i})">删除</button>
@@ -338,7 +377,7 @@ function useRealRate() {
 }
 
 async function clearAll() {
-    if (!confirm("确定清空所有数据？不可恢复！")) return;
+    if (!confirm("⚠️ 确定清空所有数据？此操作不可恢复！")) return;
     bills = [];
     await saveToCloud();
     render();
