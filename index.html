@@ -188,10 +188,9 @@
 
 <script>
 // ==============================
-// 🔥 已填入你的专属配置
+// 🔥 多人实时同步核心配置
 // ==============================
-const GIST_ID = "0323244af986dd1c99fd70979e58504d";
-const GITHUB_TOKEN = "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";
+const GIST_ID = "0323244af986dd1c99fd70979e58504d"; // 公共云端数据库
 const GIST_FILE = "data.json";
 let bills = [];
 let currentRealRate = null;
@@ -201,6 +200,7 @@ const MEMBER_ICONS = {
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
+// 从云端加载数据（所有人共用）
 async function loadFromCloud() {
     try {
         let res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
@@ -218,6 +218,7 @@ async function loadFromCloud() {
     render();
 }
 
+// 保存到云端（所有人同步看到）
 async function saveToCloud() {
     document.getElementById("syncStatus").innerText = "🔄 正在同步数据...";
     try {
@@ -225,7 +226,7 @@ async function saveToCloud() {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "token " + GITHUB_TOKEN
+                "Authorization": "token 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"
             },
             body: JSON.stringify({
                 files: {
@@ -292,7 +293,7 @@ function getSelected(containerId) {
 }
 
 window.onload = () => {
-    loadFromCloud();
+    loadFromCloud(); // 打开页面 → 自动加载云端最新数据
 };
 
 function render() {
@@ -429,7 +430,7 @@ async function deleteBill(index) {
 
 async function fetchRealRate() {
     try {
-        const res = await fetch("https://api.github.com/gists/${GIST_ID}");
+        const res = await fetch("https://open.er-api.com/v6/latest/JPY");
         const data = await res.json();
         const r = (data.rates.CNY * 100).toFixed(2);
         currentRealRate = r;
