@@ -42,6 +42,7 @@
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
         
+        /* ========== 最终结算字体缩小 + 保证一行展示 ========== */
         .result-item{
             padding:8px 12px;
             border-radius:10px;
@@ -64,6 +65,7 @@
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
 
+        /* ========== 分摊人员改为 3 列布局，手机更美观 ========== */
         .split-box{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -103,7 +105,7 @@
     <p>福冈｜熊本｜鹿儿岛</p>
 </div>
 
-<div class="sync-info" id="syncStatus">✅ 多人同步版 · 数据实时更新</div>
+<div class="sync-info">✨ 多人同步账本 · 实时查看</div>
 <div class="rate-tip" id="rateTip" style="display:none">
     <span>💱 实时汇率：<span id="realRate">-</span></span>
     <button onclick="useRealRate()">使用</button>
@@ -187,12 +189,6 @@
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
-// ==============================
-// 🔥 已填入你的专属配置
-// ==============================
-const GIST_ID = "0323244af986dd1c99fd70979e58504d";
-const GITHUB_TOKEN = "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";
-const GIST_FILE = "data.json";
 let bills = [];
 let currentRealRate = null;
 
@@ -201,84 +197,20 @@ const MEMBER_ICONS = {
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
-// 加载云端数据（安全版：绝不覆盖非空数据）
-async function loadFromCloud() {
-    try {
-        let res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-        let json = await res.json();
-        let data = JSON.parse(json.files[GIST_FILE].content);
-        
-        // ✅ 安全规则：只有本地为空时才加载云端，防止刷新丢数据
-        if (data.bills && data.bills.length > 0) {
-            bills = data.bills;
-        }
-        
-        document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
-        document.getElementById("rate").value = data.rate || 5.0;
-        document.getElementById("syncStatus").innerText = "✅ 数据已同步 · 多人实时共用";
-    } catch (e) {
-        document.getElementById("syncStatus").innerText = "⚠️ 同步失败，请刷新重试";
-    }
-    renderSplitMembers("splitContainer");
-    render();
+function saveToLocal() {
+    localStorage.setItem("tripBills", JSON.stringify(bills));
+    localStorage.setItem("tripMembers", document.getElementById("members").value);
+    localStorage.setItem("tripRate", document.getElementById("rate").value);
 }
 
-// 保存到云端
-async function saveToCloud() {
-    document.getElementById("syncStatus").innerText = "🔄 正在同步数据...";
-    try {
-        await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "token " + GITHUB_TOKEN
-            },
-            body: JSON.stringify({
-                files: {
-                    [GIST_FILE]: {
-                        content: JSON.stringify({
-                            bills: bills,
-                            members: document.getElementById("members").value,
-                            rate: parseFloat(document.getElementById("rate").value)
-                        }, null, 2)
-                    }
-                }
-            })
-        });
-        document.getElementById("syncStatus").innerText = "✅ 同步成功 · 所有人已更新";
-    } catch (e) {
-        alert("❌ 同步失败，请重试");
-    }
+function loadFromLocal() {
+    const savedBills = localStorage.getItem("tripBills");
+    const savedMembers = localStorage.getItem("tripMembers");
+    const savedRate = localStorage.getItem("tripRate");
+    if (savedBills) bills = JSON.parse(savedBills);
+    if (savedMembers) document.getElementById("members").value = savedMembers;
+    if (savedRate) document.getElementById("rate").value = savedRate;
 }
-
-// ==============================
-// 🔁 安全自动同步：绝不丢数据
-// ==============================
-let isSyncing = false;
-async function autoSync() {
-    if (isSyncing) return;
-    isSyncing = true;
-    try {
-        let res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-        let json = await res.json();
-        let data = JSON.parse(json.files[GIST_FILE].content);
-
-        // ✅ 核心修复：
-        // 1. 云端有数据 → 用云端
-        // 2. 云端为空 → 保留本地（绝不清空）
-        if (data.bills && data.bills.length > 0) {
-            bills = data.bills;
-        }
-
-        document.getElementById("members").value = data.members || document.getElementById("members").value;
-        document.getElementById("rate").value = data.rate || document.getElementById("rate").value;
-        render();
-    } catch (e) {}
-    isSyncing = false;
-}
-
-// 自动同步 3 秒一次
-setInterval(autoSync, 3000);
 
 function getMembers() {
     return document.getElementById("members").value.split(",").map(i => i.trim()).filter(i => i);
@@ -327,7 +259,9 @@ function getSelected(containerId) {
 }
 
 window.onload = () => {
-    loadFromCloud();
+    loadFromLocal();
+    renderSplitMembers("splitContainer");
+    render();
 };
 
 function render() {
@@ -388,7 +322,7 @@ function render() {
     document.getElementById("billList").innerHTML = billHTML || "<div style='text-align:center;color:#aaa'>暂无记录</div>";
 }
 
-async function addBill() {
+function addBill() {
     const cate = document.getElementById("category").value;
     const title = document.getElementById("title").value.trim();
     const payer = document.getElementById("payer").value;
@@ -409,7 +343,7 @@ async function addBill() {
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
     
-    await saveToCloud();
+    saveToLocal();
     render();
 }
 
@@ -427,7 +361,7 @@ function editBill(index) {
     document.getElementById("editCard").style.display = "block";
 }
 
-async function saveEdit() {
+function saveEdit() {
     const index = parseInt(document.getElementById("editIndex").value);
     const cate = document.getElementById("editCategory").value;
     const title = document.getElementById("editTitle").value.trim();
@@ -446,7 +380,7 @@ async function saveEdit() {
     };
 
     cancelEdit();
-    await saveToCloud();
+    saveToLocal();
     render();
 }
 
@@ -455,14 +389,13 @@ function cancelEdit() {
     document.getElementById("editCard").style.display = "none";
 }
 
-async function deleteBill(index) {
+function deleteBill(index) {
     if (!confirm("❌ 确定删除此账单？")) return;
     bills.splice(index, 1);
-    await saveToCloud();
+    saveToLocal();
     render();
 }
 
-// 汇率接口已修复
 async function fetchRealRate() {
     try {
         const res = await fetch("https://open.er-api.com/v6/latest/JPY");
@@ -474,26 +407,26 @@ async function fetchRealRate() {
     } catch (e) {}
 }
 
-async function useRealRate() {
+function useRealRate() {
     if (currentRealRate) {
         document.getElementById("rate").value = currentRealRate;
-        await saveToCloud();
+        saveToLocal();
         render();
         alert("✅ 汇率已更新，所有金额已同步");
     }
 }
 
-async function saveSettings() {
+function saveSettings() {
     renderSplitMembers("splitContainer");
-    await saveToCloud();
+    saveToLocal();
     render();
-    alert("✅ 设置已保存并同步");
+    alert("✅ 设置已保存");
 }
 
-async function clearAll() {
+function clearAll() {
     if (!confirm("⚠️ 确定清空所有数据？此操作不可恢复！")) return;
     bills = [];
-    await saveToCloud();
+    saveToLocal();
     render();
 }
 </script>
