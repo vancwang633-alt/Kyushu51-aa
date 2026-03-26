@@ -19,7 +19,6 @@
         .btn-pink{background:#6b9ccd}
         .btn-red{background:#e35353}
 
-        /* ========== 汇率布局优化：去掉图标 + 缩短输入框 + 同行显示单位 ========== */
         .rate-box{
             display: flex;
             align-items: center;
@@ -42,10 +41,22 @@
         .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;text-align:center;padding:10px 0}
         .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
         .stats .label{font-size:12px;color:#5a7a9e}
-        .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+        
+        /* ========== 最终结算字体缩小 + 保证一行展示 ========== */
+        .result-item{
+            padding:8px 12px;
+            border-radius:10px;
+            margin-bottom:6px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            font-size:13px;
+            white-space:nowrap;
+        }
         .income{background:#f0f7f4;color:#4a8272}
         .outcome{background:#fef2f2;color:#b85c5c}
         .clear{background:#f7f7f7;color:#777}
+        
         .bill-item{padding:12px;border-bottom:1px dashed #eee;font-size:13px}
         .bill-item .title{font-weight:bold;margin-bottom:4px}
         .bill-actions{display:flex;gap:8px;margin-top:8px}
@@ -54,10 +65,11 @@
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
 
+        /* ========== 分摊人员改为 3 列布局，手机更美观 ========== */
         .split-box{
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
             margin-bottom:12px;
         }
         .split-item{
@@ -102,13 +114,10 @@
 <div class="card">
     <h3><span class="sakura">❀</span> 旅行成员 & 汇率</h3>
     <input type="text" id="members" value="小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry">
-    
-    <!-- 优化后的汇率行：无图标 + 短输入框 + 单位同行 -->
     <div class="rate-box">
         <input type="number" id="rate" step="0.01" value="5.0">
         <span class="unit">元/100日元</span>
     </div>
-
     <button class="btn" onclick="fetchRealRate()">🔄 刷新实时汇率</button>
     <button class="btn" onclick="saveSettings()">💾 保存设置</button>
 </div>
@@ -284,7 +293,6 @@ function render() {
         const cny = jpy * rate / 100;
         const icon = MEMBER_ICONS[m] || "👤";
         
-        // ========== 最终结算：加上币种符号 JPY / CNY ==========
         if (cny > 0.01) {
             resHTML += `<div class="result-item income">${icon} ${m} <span>应收 JPY ${jpy.toFixed(0)} / CNY ¥${cny.toFixed(2)}</span></div>`;
         } else if (cny < -0.01) {
