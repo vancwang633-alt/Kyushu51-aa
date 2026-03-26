@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五一九州行-记账本</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:"PingFang SC","Helvetica Neue",sans-serif;background:#f2f7fb;background-image:radial-gradient(#e0ebf5 1px,transparent 1px);background-size:20px 20px;color:#3d3a34;max-width:700px;margin:30px auto;padding:0 20px}
+        .header{text-align:center;background:#e5eff8;border-radius:20px;padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,0.05)}
+        .header h1{font-size:24px;color:#3a6a9e;margin-bottom:8px}
+        .header p{font-size:14px;color:#5a7a9e}
+        .card{background:white;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid #d7e4f2}
+        .card h3{font-size:16px;color:#3a6a9e;margin-bottom:15px;display:flex;align-items:center;gap:6px}
+        input,select{width:100%;padding:12px 14px;border:1px solid #d7e4f2;border-radius:10px;margin-bottom:10px;font-size:14px;outline:none}
+        input:focus{border-color:#5a88b3;background:#f9fbff}
+        .btn{width:100%;background:#5a88b3;color:white;border:none;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;margin-top:5px}
+        .btn:hover{background:#4a749e}
+        .btn-pink{background:#6b9ccd}
+        .btn-pink:hover{background:#5a88b3}
+        .rate-box{display:flex;align-items:center;gap:10px}
+        .rate-box input{margin-bottom:0}
+        .rate-tip{background:#eef5ff;color:#316fea;padding:10px 14px;border-radius:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+        .rate-tip button{background:#316fea;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:12px}
+        .stats{display:flex;justify-content:space-around;text-align:center;padding:10px 0}
+        .stats .num{font-size:22px;font-weight:bold;color:#3a6a9e}
+        .stats .label{font-size:12px;color:#5a7a9e}
+        .result-item{padding:10px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between}
+        .income{background:#f0f7f4;color:#4a8272}
+        .outcome{background:#fef2f2;color:#b85c5c}
+        .clear{background:#f7f7f7;color:#777}
+        .bill-item{padding:12px;border-bottom:1px dashed #eee;font-size:13px}
+        .bill-item .title{font-weight:bold;margin-bottom:4px}
+        .sync-info{text-align:center;font-size:12px;color:#5a7a9e;margin-top:-10px;margin-bottom:15px}
+        .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
+        .sakura{color:#6b9ccd}
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>五一九州行-记账本</h1>
+    <p>福冈｜熊本｜鹿儿岛</p>
+</div>
+
+<div class="sync-info">✨ 多人同步账本 · 实时查看</div>
+
+<div class="rate-tip" id="rateTip" style="display:none">
+    <span>💱 实时汇率：<span id="realRate">-</span></span>
+    <button onclick="useRealRate()">使用</button>
+</div>
+
+<div class="card">
+    <h3><span class="sakura">❀</span> 旅行成员 & 汇率</h3>
+    <input type="text" id="members" value="小王,小陈,刘导,段段,Y经理,乱总,紫央,Jerry">
+    <div class="rate-box">
+        <span>💴</span>
+        <input type="number" id="rate" value="5.0">
+        <span>元/100日元</span>
+    </div>
+    <button class="btn" onclick="fetchRealRate()">🔄 刷新实时汇率</button>
+    <button class="btn" onclick="saveSettings()">💾 保存设置</button>
+</div>
+
+<div class="card">
+    <h3><span class="sakura">❀</span> 记录消费</h3>
+    <select id="category">
+        <option value="🍣 餐饮">🍣 餐饮</option>
+        <option value="🚆 交通">🚆 交通</option>
+        <option value="🏨 酒店">🏨 酒店</option>
+        <option value="🎫 门票">🎫 门票</option>
+        <option value="🛍️ 购物">🛍️ 购物</option>
+        <option value="🍵 零食">🍵 零食</option>
+        <option value="🧩 其他">🧩 其他</option>
+    </select>
+    <input type="text" id="title" placeholder="消费说明">
+    <input type="text" id="payer" placeholder="付款人">
+    <input type="number" id="jpy" placeholder="金额（日元）">
+    <button class="btn" onclick="addBill()">✅ 保存账单</button>
+</div>
+
+<div class="card">
+    <h3><span class="sakura">❀</span> 花费汇总</h3>
+    <div class="stats">
+        <div><div class="num" id="totalJpy">0</div><div class="label">总日元</div></div>
+        <div><div class="num" id="totalCny">0</div><div class="label">总人民币</div></div>
+        <div><div class="num" id="perCny">0</div><div class="label">人均</div></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3><span class="sakura">❀</span> 最终结算</h3>
+    <div id="result"></div>
+</div>
+
+<div class="card">
+    <h3><span class="sakura">❀</span> 消费记录</h3>
+    <div id="billList"></div>
+</div>
+
+<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本</button>
+<div class="footer">祝旅途愉快 ✨</div>
+
+<script>
+const WEBHOOK = "https://api.npoint.io/fa2a9a6c125b4f2125e9";
+let bills = [];
+let currentRealRate = null;
+
+window.onload = async () => {
+    await loadFromCloud();
+    fetchRealRate();
+    render();
+    setInterval(loadFromCloud, 5000);
+};
+
+async function loadFromCloud() {
+    try {
+        let res = await fetch(WEBHOOK);
+        let data = await res.json();
+        bills = data.bills || [];
+        document.getElementById("members").value = data.members || "小王,小陈,刘导,段段,Y经理,乱总,紫央,Jerry";
+        document.getElementById("rate").value = data.rate || 5.0;
+        render();
+    } catch(e) {}
+}
+
+async function saveToCloud() {
+    let data = {
+        members: document.getElementById("members").value,
+        rate: document.getElementById("rate").value,
+        bills: bills
+    };
+    await fetch(WEBHOOK, {
+        method: "PUT",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" }
+    });
+}
+
+function saveSettings() {
+    saveToCloud();
+    alert("已同步！");
+    render();
+}
+
+async function addBill() {
+    let cate = document.getElementById("category").value;
+    let title = document.getElementById("title").value.trim();
+    let payer = document.getElementById("payer").value.trim();
+    let jpy = parseFloat(document.getElementById("jpy").value);
+    let rate = parseFloat(document.getElementById("rate").value);
+    if (!title || !payer || isNaN(jpy) || jpy <= 0) return alert("请填完整");
+
+    bills.push({
+        time: new Date().toLocaleString(),
+        cate, title, payer, jpy,
+        cny: (jpy * rate / 100).toFixed(2)
+    });
+
+    document.getElementById("title").value = "";
+    document.getElementById("jpy").value = "";
+    await saveToCloud();
+    render();
+}
+
+function render() {
+    let members = document.getElementById("members").value.split(",").map(i=>i.trim()).filter(i=>i);
+    let rate = parseFloat(document.getElementById("rate").value) || 5.0;
+    let totalJpy = 0, totalCny = 0;
+    let pay = {}; members.forEach(m => pay[m] = 0);
+
+    bills.forEach(b => {
+        totalJpy += b.jpy;
+        let c = parseFloat(b.cny);
+        totalCny += c;
+        pay[b.payer] = (pay[b.payer] || 0) + c;
+    });
+
+    let per = members.length ? (totalCny / members.length).toFixed(2) : 0;
+    document.getElementById("totalJpy").innerText = totalJpy.toFixed(0);
+    document.getElementById("totalCny").innerText = totalCny.toFixed(2);
+    document.getElementById("perCny").innerText = per;
+
+    let res = "";
+    members.forEach(m => {
+        let d = (pay[m] - per).toFixed(2);
+        if (d > 0) res += `<div class="result-item income">${m} <span>收 ¥${d}</span></div>`;
+        else if (d < 0) res += `<div class="result-item outcome">${m} <span>付 ¥${-d}</span></div>`;
+        else res += `<div class="result-item clear">${m} 已两清</div>`;
+    });
+    document.getElementById("result").innerHTML = res;
+
+    let list = "";
+    bills.forEach(b => {
+        list += `<div class="bill-item"><div class="title">${b.cate} ${b.title}</div><div>${b.time} · ${b.payer}</div><div>¥${b.cny} (${b.jpy}日元)</div></div>`;
+    });
+    document.getElementById("billList").innerHTML = list || "<div style='text-align:center;color:#aaa'>暂无记录</div>";
+}
+
+async function fetchRealRate() {
+    try {
+        let res = await fetch("https://open.er-api.com/v6/latest/JPY");
+        let data = await res.json();
+        let r = (data.rates.CNY * 100).toFixed(2);
+        currentRealRate = r;
+        document.getElementById("realRate").innerText = `100日元 = ${r} 元`;
+        document.getElementById("rateTip").style.display = "flex";
+    } catch(e) {}
+}
+
+function useRealRate() {
+    if (currentRealRate) {
+        document.getElementById("rate").value = currentRealRate;
+        saveSettings();
+    }
+}
+
+async function clearAll() {
+    if (!confirm("确定清空？不可恢复！")) return;
+    bills = [];
+    await saveToCloud();
+    render();
+}
+</script>
+</body>
+</html>
