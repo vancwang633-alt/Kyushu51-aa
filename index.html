@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五一九州行-记账本（云端共享版）</title>
+    <title>旅行AA记账本（云端多人共享版）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:"PingFang SC","Helvetica Neue",sans-serif;background:#f2f7fb;background-image:radial-gradient(#e0ebf5 1px,transparent 1px);background-size:20px 20px;color:#3d3a34;max-width:700px;margin:30px auto;padding:0 20px}
@@ -32,7 +32,7 @@
         .bill-item .title{font-weight:bold;margin-bottom:4px}
         .bill-actions{display:flex;gap:8px;margin-top:8px}
         .bill-actions button{flex:1;padding:6px;border-radius:6px;border:none;color:white;font-size:12px;cursor:pointer}
-        .sync-info{text-align:center;font-size:12px;color:#5a7a9e;margin-top:-10px;margin-bottom:15px}
+        .sync-info{text-align:center;font-size:12px;color:#3a6a9e;margin-top:-10px;margin-bottom:15px}
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
         .split-box{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -45,11 +45,11 @@
 <body>
 
 <div class="header">
-    <h1>五一九州行-记账本</h1>
-    <p>福冈｜熊本｜鹿儿岛｜云端共享</p>
+    <h1>旅行AA记账本</h1>
+    <p>✅ 云端实时同步 · 多人共用 · 刷新不丢失</p>
 </div>
 
-<div class="sync-info" id="syncTip">🔄 数据同步中...</div>
+<div class="sync-info" id="syncStatus">🔄 正在同步云端数据...</div>
 <div class="rate-tip" id="rateTip" style="display:none">
     <span>💱 实时汇率：<span id="realRate">-</span></span>
     <button onclick="useRealRate()">使用</button>
@@ -64,7 +64,7 @@
         <span>元/100日元</span>
     </div>
     <button class="btn" onclick="fetchRealRate()">🔄 刷新实时汇率</button>
-    <button class="btn" onclick="saveSettings()">💾 保存设置</button>
+    <button class="btn" onclick="saveSettings()">💾 保存设置（同步云端）</button>
 </div>
 
 <div class="card" id="addCard">
@@ -93,7 +93,7 @@
     <h3>👥 选择分摊人员</h3>
     <button class="select-all-btn" onclick="toggleSelectAll()">✅ 一键全选 / 取消全选</button>
     <div class="split-box" id="splitContainer"></div>
-    <button class="btn" onclick="addBill()">✅ 保存账单</button>
+    <button class="btn" onclick="addBill()">✅ 保存账单（云端同步）</button>
 </div>
 
 <div class="card edit-mode" id="editCard">
@@ -129,12 +129,14 @@
     <div id="billList"></div>
 </div>
 
-<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本</button>
+<button class="btn btn-pink" onclick="clearAll()">🗑️ 清空账本（云端）</button>
 <div class="footer">祝旅途愉快 ✨</div>
 
 <script>
-const API = "https://api.jsonbin.io/v3/b/67941f26ad19ca34f8c5ced7";
-const API_KEY = "$2a$10$QoBYUKn1Vg1hGgvXcL5GVOHxGpM8wV0Vh0wJ0zJ5X9J0E5t5d5S5a";
+// 云端共享配置
+const CLOUD_URL = "https://api.jsonbin.io/v3/b/6796fa8e8e9a48121f80f2a1";
+const API_KEY = "$2a$10$0M1vH0EaH0vG0dG0z0E0f0u0c0b0a0s0d0f0g0h0j0k0l0z0x0c0v0b0n0m0";
+
 let bills = [];
 let currentRealRate = null;
 
@@ -143,48 +145,57 @@ const MEMBER_ICONS = {
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
 
+// 从云端加载所有数据（所有人共用）
 async function loadCloudData() {
     try {
-        let res = await fetch(API, {headers:{"X-Master-Key":API_KEY}});
-        let data = (await res.json()).record;
+        const res = await fetch(CLOUD_URL, {
+            headers: { "X-Master-Key": API_KEY }
+        });
+        const data = (await res.json()).record;
+        
         bills = data.bills || [];
         document.getElementById("members").value = data.members || "小王,陈局,刘导,段段,Y经理,乱总,紫央,Jerry";
         document.getElementById("rate").value = data.rate || 5.0;
-        document.getElementById("syncTip").innerText = "✅ 数据已同步（所有人共用）";
+        
+        document.getElementById("syncStatus").innerText = "✅ 数据已同步 · 所有人共用同一套数据";
     } catch (e) {
-        document.getElementById("syncTip").innerText = "⚠️ 同步失败";
+        document.getElementById("syncStatus").innerText = "⚠️ 同步失败，请刷新重试";
     }
     renderSplitMembers("splitContainer");
     render();
 }
 
+// 保存到云端（所有人可见）
 async function saveCloudData() {
     try {
-        await fetch(API, {
-            method:"PUT",
-            headers:{
-                "Content-Type":"application/json",
-                "X-Master-Key":API_KEY
+        await fetch(CLOUD_URL, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Master-Key": API_KEY
             },
-            body:JSON.stringify({
+            body: JSON.stringify({
                 bills: bills,
                 members: document.getElementById("members").value,
                 rate: parseFloat(document.getElementById("rate").value)
             })
         });
-        document.getElementById("syncTip").innerText = "✅ 已同步到云端（所有人可见）";
-        setTimeout(()=>loadCloudData(), 600);
-    } catch(e){alert("❌ 保存失败")}
+        document.getElementById("syncStatus").innerText = "✅ 已同步到云端 · 所有人都能看到";
+        setTimeout(loadCloudData, 500);
+    } catch (e) {
+        alert("❌ 云端保存失败");
+    }
 }
 
+// 成员与选择功能
 function getMembers() {
-    return document.getElementById("members").value.split(",").map(i=>i.trim()).filter(Boolean);
+    return document.getElementById("members").value.split(",").map(i => i.trim()).filter(Boolean);
 }
 
-function renderSplitMembers(containerId, checkedList=[]){
+function renderSplitMembers(containerId, checkedList = []) {
     const container = document.getElementById(containerId);
     container.innerHTML = "";
-    getMembers().forEach(m=>{
+    getMembers().forEach(m => {
         let el = document.createElement("div");
         el.className = "split-item";
         let icon = MEMBER_ICONS[m] || "👤";
@@ -194,92 +205,107 @@ function renderSplitMembers(containerId, checkedList=[]){
     });
 }
 
-function toggleSelectAll(){
-    let all = !document.querySelectorAll("#splitContainer input:checked").length;
-    document.querySelectorAll("#splitContainer input").forEach(i=>i.checked=all);
-}
-function toggleSelectAllEdit(){
-    let all = !document.querySelectorAll("#editSplitContainer input:checked").length;
-    document.querySelectorAll("#editSplitContainer input").forEach(i=>i.checked=all);
+function toggleSelectAll() {
+    const all = !document.querySelectorAll("#splitContainer input:checked").length;
+    document.querySelectorAll("#splitContainer input").forEach(i => i.checked = all);
 }
 
-function getSelected(containerId){
+function toggleSelectAllEdit() {
+    const all = !document.querySelectorAll("#editSplitContainer input:checked").length;
+    document.querySelectorAll("#editSplitContainer input").forEach(i => i.checked = all);
+}
+
+function getSelected(containerId) {
     let arr = [];
-    document.querySelectorAll(`#${containerId} input:checked`).forEach(i=>arr.push(i.nextElementSibling.nextElementSibling.innerText));
+    document.querySelectorAll(`#${containerId} input:checked`).forEach(i => {
+        arr.push(i.nextElementSibling.nextElementSibling.innerText);
+    });
     return arr;
 }
 
-window.onload = ()=> loadCloudData();
+// 页面加载 → 自动从云端拉取数据
+window.onload = loadCloudData;
 
-function render(){
+// 渲染页面
+function render() {
     const members = getMembers();
     const rate = +document.getElementById("rate").value || 5.0;
-    let totalJpy=0, totalCny=0;
-    let balance = {}; members.forEach(m=>balance[m]=0);
+    let totalJpy = 0, totalCny = 0;
+    let balance = {};
+    members.forEach(m => balance[m] = 0);
 
-    bills.forEach(b=>{
+    bills.forEach(b => {
         totalJpy += b.jpy;
-        let cny = +b.cny;
+        const cny = +b.cny;
         totalCny += cny;
-        let per = cny / b.split.length;
+        const per = cny / b.split.length;
         balance[b.payer] += cny;
-        b.split.forEach(p=>balance[p]-=per);
+        b.split.forEach(p => balance[p] -= per);
     });
 
     document.getElementById("totalJpy").innerText = totalJpy.toFixed(0);
     document.getElementById("totalCny").innerText = totalCny.toFixed(2);
-    document.getElementById("perCny").innerText = members.length ? (totalCny/members.length).toFixed(2) : "0";
+    document.getElementById("perCny").innerText = members.length ? (totalCny / members.length).toFixed(2) : "0";
 
     let resHTML = "";
-    members.forEach(m=>{
-        let num = Math.round(balance[m]*100)/100;
-        let icon = MEMBER_ICONS[m]||"👤";
-        if(num>0) resHTML+=`<div class="result-item income">${icon} ${m} <span>应收 ¥${num.toFixed(2)}</span></div>`;
-        else if(num<0) resHTML+=`<div class="result-item outcome">${icon} ${m} <span>应付 ¥${Math.abs(num).toFixed(2)}</span></div>`;
-        else resHTML+=`<div class="result-item clear">${icon} ${m} 已两清</div>`;
+    members.forEach(m => {
+        const num = Math.round(balance[m] * 100) / 100;
+        const icon = MEMBER_ICONS[m] || "👤";
+        if (num > 0) resHTML += `<div class="result-item income">${icon} ${m} <span>应收 ¥${num.toFixed(2)}</span></div>`;
+        else if (num < 0) resHTML += `<div class="result-item outcome">${icon} ${m} <span>应付 ¥${Math.abs(num).toFixed(2)}</span></div>`;
+        else resHTML += `<div class="result-item clear">${icon} ${m} 已两清</div>`;
     });
     document.getElementById("result").innerHTML = resHTML;
 
     let billHTML = "";
-    bills.forEach((b,i)=>{
-        let icon = MEMBER_ICONS[b.payer]||"👤";
-        billHTML+=`
+    bills.forEach((b, i) => {
+        const icon = MEMBER_ICONS[b.payer] || "👤";
+        billHTML += `
         <div class="bill-item">
             <div class="title">${b.cate} ${b.title}</div>
             <div>${b.time}｜付款：${icon} ${b.payer}</div>
             <div>金额：¥${b.cny} (${b.jpy}日元)</div>
-            <div>分摊：${b.split.map(m=>(MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
+            <div>分摊：${b.split.map(m => (MEMBER_ICONS[m] || "👤") + " " + m).join("、")}</div>
             <div class="bill-actions">
-                <button onclick="editBill(${i})">编辑</button>
-                <button onclick="deleteBill(${i})">删除</button>
+                <button style="background:#5a88b3" onclick="editBill(${i})">编辑</button>
+                <button style="background:#e35353" onclick="deleteBill(${i})">删除</button>
             </div>
         </div>`;
     });
-    document.getElementById("billList").innerHTML = billHTML || "<div style='text-align:center'>暂无记录</div>";
+    document.getElementById("billList").innerHTML = billHTML || "<div style='text-align:center;color:#aaa'>暂无记录</div>";
 }
 
-async function addBill(){
+// 新增账单
+async function addBill() {
     const cate = document.getElementById("category").value;
     const title = document.getElementById("title").value.trim();
     const payer = document.getElementById("payer").value;
     const jpy = +document.getElementById("jpy").value;
     const rate = +document.getElementById("rate").value;
     const split = getSelected("splitContainer");
-    if(!title || !payer || !jpy || jpy<=0 || split.length===0){
-        alert("⚠️ 请填写完整"); return;
+
+    if (!title || !payer || !jpy || jpy <= 0 || split.length === 0) {
+        alert("⚠️ 请填写完整信息");
+        return;
     }
+
     bills.push({
-        time: new Date().toLocaleString(), cate, title, payer, jpy,
-        cny: (jpy*rate/100).toFixed(2), split
+        time: new Date().toLocaleString(),
+        cate, title, payer, jpy,
+        cny: (jpy * rate / 100).toFixed(2),
+        split
     });
+
     document.getElementById("title").value = "";
     document.getElementById("jpy").value = "";
     renderSplitMembers("splitContainer");
+    
     await saveCloudData();
-    alert("✅ 保存成功（所有人可见）");
+    alert("✅ 保存成功！所有人都能看到！");
 }
 
-function editBill(index){
+// 编辑功能
+function editBill(index) {
     const b = bills[index];
     document.getElementById("editIndex").value = index;
     document.getElementById("editCategory").innerHTML = document.getElementById("category").innerHTML;
@@ -293,7 +319,7 @@ function editBill(index){
     document.getElementById("editCard").style.display = "block";
 }
 
-async function saveEdit(){
+async function saveEdit() {
     const index = +document.getElementById("editIndex").value;
     const cate = document.getElementById("editCategory").value;
     const title = document.getElementById("editTitle").value.trim();
@@ -301,47 +327,62 @@ async function saveEdit(){
     const jpy = +document.getElementById("editJpy").value;
     const rate = +document.getElementById("rate").value;
     const split = getSelected("editSplitContainer");
-    if(!title || !payer || !jpy || split.length===0){alert("⚠️ 完整填写");return;}
-    bills[index] = {...bills[index], cate, title, payer, jpy, cny:(jpy*rate/100).toFixed(2), split};
+
+    if (!title || !payer || !jpy || split.length === 0) {
+        alert("⚠️ 请填写完整信息");
+        return;
+    }
+
+    bills[index] = {
+        ...bills[index],
+        cate, title, payer, jpy,
+        cny: (jpy * rate / 100).toFixed(2),
+        split
+    };
+
     cancelEdit();
     await saveCloudData();
 }
 
-function cancelEdit(){
+function cancelEdit() {
     document.getElementById("addCard").style.display = "block";
     document.getElementById("editCard").style.display = "none";
 }
 
-async function deleteBill(index){
-    if(!confirm("❌ 删除？")) return;
-    bills.splice(index,1);
+// 删除
+async function deleteBill(index) {
+    if (!confirm("❌ 确定删除？云端数据会同步删除")) return;
+    bills.splice(index, 1);
     await saveCloudData();
 }
 
-async function fetchRealRate(){
-    try{
-        let r = await (await fetch("https://open.er-api.com/v6/latest/JPY")).json();
-        currentRealRate = (r.rates.CNY*100).toFixed(2);
+// 汇率
+async function fetchRealRate() {
+    try {
+        const res = await fetch("https://open.er-api.com/v6/latest/JPY");
+        const data = await res.json();
+        currentRealRate = (data.rates.CNY * 100).toFixed(2);
         document.getElementById("realRate").innerText = `100日元 = ${currentRealRate} 元`;
         document.getElementById("rateTip").style.display = "flex";
-    }catch(e){}
+    } catch (e) {}
 }
 
-function useRealRate(){
-    if(currentRealRate){
+function useRealRate() {
+    if (currentRealRate) {
         document.getElementById("rate").value = currentRealRate;
         saveSettings();
     }
 }
 
-async function saveSettings(){
+async function saveSettings() {
     renderSplitMembers("splitContainer");
     await saveCloudData();
-    alert("✅ 设置已同步");
+    alert("✅ 设置已同步到云端");
 }
 
-async function clearAll(){
-    if(!confirm("⚠️ 清空所有？不可恢复！")) return;
+// 清空
+async function clearAll() {
+    if (!confirm("⚠️ 确定清空云端所有数据？不可恢复！")) return;
     bills = [];
     await saveCloudData();
 }
