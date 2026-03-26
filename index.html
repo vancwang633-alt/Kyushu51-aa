@@ -248,7 +248,7 @@ async function saveToCloud() {
 }
 
 // ==============================
-// 🔁 自动刷新：每 3 秒拉一次云端数据
+// 🔁 自动刷新：每 3 秒拉一次云端数据（优化版，无闪烁）
 // ==============================
 let isSyncing = false;
 async function autoSync() {
@@ -259,13 +259,12 @@ async function autoSync() {
         let json = await res.json();
         let data = JSON.parse(json.files[GIST_FILE].content);
         
-        // 只有数据不一样才重新渲染，避免闪烁
         if (JSON.stringify(data.bills) !== JSON.stringify(bills)) {
             bills = data.bills || [];
             document.getElementById("members").value = data.members || document.getElementById("members").value;
             document.getElementById("rate").value = data.rate || document.getElementById("rate").value;
             render();
-            document.getElementById("syncStatus").innerText = "🔄 已自动更新最新数据";
+            document.getElementById("syncStatus").innerText = "✅ 数据已同步 · 多人实时共用";
         }
     } catch (e) {}
     isSyncing = false;
