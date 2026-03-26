@@ -74,7 +74,19 @@
         <option value="🧩 其他">🧩 其他</option>
     </select>
     <input type="text" id="title" placeholder="消费说明">
-    <input type="text" id="payer" placeholder="付款人">
+    
+    <!-- 付款人下拉菜单 -->
+    <select id="payer">
+        <option value="小王">小王</option>
+        <option value="小陈">小陈</option>
+        <option value="刘导">刘导</option>
+        <option value="段段">段段</option>
+        <option value="Y经理">Y经理</option>
+        <option value="乱总">乱总</option>
+        <option value="紫央">紫央</option>
+        <option value="Jerry">Jerry</option>
+    </select>
+
     <input type="number" id="jpy" placeholder="金额（日元）">
     <button class="btn" onclick="addBill()">✅ 保存账单</button>
 </div>
@@ -146,7 +158,7 @@ function saveSettings() {
 async function addBill() {
     let cate = document.getElementById("category").value;
     let title = document.getElementById("title").value.trim();
-    let payer = document.getElementById("payer").value.trim();
+    let payer = document.getElementById("payer").value;
     let jpy = parseFloat(document.getElementById("jpy").value);
     let rate = parseFloat(document.getElementById("rate").value);
     if (!title || !payer || isNaN(jpy) || jpy <= 0) return alert("请填完整");
