@@ -46,16 +46,19 @@
         .edit-mode{display:none}
         .select-all-btn{background: #e0f0ff;color:#3a6a9e;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;width:100%}
 
-        /* ✅ 自定义删除弹窗（手机 100% 显示） */
+        /* 统一弹窗 */
         .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:9999}
         .modal-content{background:#fff;width:85%;max-width:350px;border-radius:16px;padding:28px;text-align:center}
         .modal-btns{display:flex;gap:12px;margin-top:20px}
         .modal-btns button{flex:1;padding:12px;border-radius:10px;border:none;font-size:15px}
+
+        /* 轻提示 */
+        .toast{position:fixed;bottom:20%;left:50%;transform:translate(-50%,0);background:#333;color:white;padding:10px 18px;border-radius:10px;display:none;z-index:9999}
     </style>
 </head>
 <body>
 
-<!-- ✅ 自定义删除弹窗 -->
+<!-- 删除确认弹窗 -->
 <div class="modal" id="delModal">
     <div class="modal-content">
         <h3>确定删除此账单？</h3>
@@ -66,6 +69,9 @@
         </div>
     </div>
 </div>
+
+<!-- 轻提示 -->
+<div class="toast" id="toast"></div>
 
 <div class="header">
     <h1>五一九州行-记账本</h1>
@@ -163,6 +169,14 @@ const MEMBER_ICONS = {
     "小王":"🎮","陈局":"👨‍💼","刘导":"💣","段段":"🏢",
     "Y经理":"💹","乱总":"🕺","紫央":"👩","Jerry":"🏥"
 };
+
+// 轻提示（手机100%显示）
+function showToast(msg){
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.style.display = "block";
+    setTimeout(()=>t.style.display="none",1500);
+}
 
 function saveToLocal() {
     localStorage.setItem("tripBills", JSON.stringify(bills));
@@ -272,7 +286,7 @@ function addBill() {
     const p=document.getElementById("payer").value;
     const j=parseFloat(document.getElementById("jpy").value);
     const s=getSelected("splitContainer");
-    if(!t||!p||isNaN(j)||j<=0||s.length===0){ alert("请填写完整信息"); return; }
+    if(!t||!p||isNaN(j)||j<=0||s.length===0){ showToast("请填写完整信息"); return; }
     bills.push({time:new Date().toLocaleString(),cate:document.getElementById("category").value,title:t,payer:p,jpy:j,split:s});
     document.getElementById("title").value="";
     document.getElementById("jpy").value="";
@@ -301,7 +315,7 @@ function saveEdit() {
     const p=document.getElementById("editPayer").value;
     const j=parseFloat(document.getElementById("editJpy").value);
     const s=getSelected("editSplitContainer");
-    if(!t||!p||isNaN(j)||j<=0||s.length===0){ alert("请填写完整信息"); return; }
+    if(!t||!p||isNaN(j)||j<=0||s.length===0){ showToast("请填写完整信息"); return; }
     bills[i]={...bills[i],cate:document.getElementById("editCategory").value,title:t,payer:p,jpy:j,split:s};
     cancelEdit();
     saveToLocal();
@@ -313,7 +327,7 @@ function cancelEdit() {
     document.getElementById("editCard").style.display="none";
 }
 
-// ✅ 自定义弹窗控制（手机 100% 弹出）
+// 删除弹窗
 function openDelModal(index){
     deleteIndex = index;
     document.getElementById("delModal").style.display = "flex";
@@ -328,6 +342,7 @@ function confirmDel(){
     closeDelModal();
 }
 
+// 汇率
 async function fetchRealRate() {
     try{
         const res = await fetch("https://open.er-api.com/v6/latest/JPY");
@@ -335,15 +350,35 @@ async function fetchRealRate() {
         currentRealRate = (data.rates.CNY * 100).toFixed(2);
         document.getElementById("realRate").innerText = `100日元 = ${currentRealRate}元`;
         document.getElementById("rateTip").style.display = "flex";
-    }catch(e){}
+        showToast("✅ 汇率刷新成功");
+    }catch(e){
+        showToast("❌ 汇率获取失败");
+    }
 }
 
 function useRealRate() {
-    if(currentRealRate){ document.getElementById("rate").value = currentRealRate; render(); }
+    if(currentRealRate){
+        document.getElementById("rate").value = currentRealRate;
+        render();
+        showToast("✅ 已使用最新汇率");
+    }else{
+        showToast("❌ 请先刷新汇率");
+    }
 }
 
-function saveSettings() { renderSplitMembers("splitContainer"); render(); alert("✅ 设置保存成功"); }
-function clearAll() { if(confirm("⚠️ 确定清空所有数据？")){ bills=[]; saveToLocal(); render(); } }
+function saveSettings() {
+    renderSplitMembers("splitContainer");
+    render();
+    showToast("✅ 设置保存成功");
+}
+
+function clearAll() {
+    if(confirm("⚠️ 确定清空所有数据？")){
+        bills=[];
+        saveToLocal();
+        render();
+    }
+}
 </script>
 </body>
 </html>
