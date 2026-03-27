@@ -34,10 +34,10 @@
         .outcome{background:#fef2f2;color:#b85c5c}
         .clear{background:#f7f7f7;color:#777}
         
-        .bill-item{padding:12px;border-bottom:1px dashed #eee;font-size:13px}
-        .bill-item .title{font-weight:bold;margin-bottom:4px}
-        .bill-actions{display:flex;gap:8px;margin-top:8px}
-        .bill-actions button{flex:1;padding:6px;border-radius:6px;border:none;color:white;font-size:12px;cursor:pointer}
+        .bill-item{padding:14px;border-bottom:1px dashed #eee;font-size:13px}
+        .bill-item .title{font-weight:bold;margin-bottom:6px}
+        .bill-actions{display:flex;gap:8px;margin-top:10px}
+        .bill-actions button{flex:1;padding:10px 6px;border-radius:8px;border:none;color:white;font-size:13px;cursor:pointer}
         .sync-info{text-align:center;font-size:12px;color:#5a7a9e;margin-top:-10px;margin-bottom:15px}
         .footer{text-align:center;font-size:12px;color:#aaa;margin-top:30px}
         .sakura{color:#6b9ccd}
@@ -46,7 +46,7 @@
         .split-item{display:flex;align-items:center;justify-content:center;gap:5px;background:#f2f7fb;padding:8px 4px;border-radius:8px;font-size:13px;white-space:nowrap}
         .split-item input{width:auto;margin:0}
         .edit-mode{display:none}
-        .select-all-btn{background:#e0f0ff;color:#3a6a9e;border:none;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:10px;width:100%}
+        .select-all-btn{background: #e0f0ff;color:#3a6a9e;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:10px;width:100%}
     </style>
 </head>
 <body>
@@ -263,22 +263,28 @@ function render() {
             <div>金额：${b.jpy} 日元 / ¥${currentCny}</div>
             <div>分摊：${b.split.map(m=>(MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
             <div class="bill-actions">
-                <button class="btn-edit" data-index="${i}" style="background:#5a88b3">编辑</button>
-                <button class="btn-delete" data-index="${i}" style="background:#e35353">删除</button>
+                <button class="editBtn" data-i="${i}" style="background:#5a88b3">编辑</button>
+                <button class="delBtn" data-i="${i}" style="background:#e35353">删除</button>
             </div>
         </div>`;
     });
-    document.getElementById("billList").innerHTML=billHTML||"<div style='text-align:center;color:#aaa'>暂无记录</div>";
+    document.getElementById("billList").innerHTML=billHTML||"<div style='text-align:center;color:#aaa;padding:10px'>暂无记录</div>";
 
-    document.querySelectorAll('.btn-edit').forEach(btn=>{
-        btn.onclick=()=>editBill(btn.dataset.index);
+    bindEvents();
+}
+
+function bindEvents(){
+    document.querySelectorAll(".editBtn").forEach(btn=>{
+        btn.onclick=()=>editBill(btn.dataset.i);
     });
-    document.querySelectorAll('.btn-delete').forEach(btn=>{
+    document.querySelectorAll(".delBtn").forEach(btn=>{
         btn.onclick=()=>{
             if(confirm("❌ 确定删除此账单？")){
-                deleteBill(btn.dataset.index);
+                bills.splice(btn.dataset.i,1);
+                saveToLocal();
+                render();
             }
-        };
+        }
     });
 }
 
@@ -313,12 +319,9 @@ function editBill(index) {
     document.getElementById("addCard").style.display="none";
     document.getElementById("editCard").style.display="block";
 
-    setTimeout(() => {
-        document.getElementById("editCard").scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-    }, 50);
+    setTimeout(()=>{
+        document.getElementById("editCard").scrollIntoView({behavior:"smooth",block:"center"});
+    },60);
 }
 
 function saveEdit() {
@@ -341,12 +344,6 @@ function saveEdit() {
 function cancelEdit() {
     document.getElementById("addCard").style.display="block";
     document.getElementById("editCard").style.display="none";
-}
-
-function deleteBill(index) {
-    bills.splice(index,1);
-    saveToLocal();
-    render();
 }
 
 async function fetchRealRate() {
