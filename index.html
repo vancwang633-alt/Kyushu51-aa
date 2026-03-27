@@ -263,12 +263,23 @@ function render() {
             <div>金额：${b.jpy} 日元 / ¥${currentCny}</div>
             <div>分摊：${b.split.map(m=>(MEMBER_ICONS[m]||"👤")+" "+m).join("、")}</div>
             <div class="bill-actions">
-                <button onclick="editBill(${i})" style="background:#5a88b3">编辑</button>
-                <button onclick="deleteBill(${i})" style="background:#e35353">删除</button>
+                <button class="btn-edit" data-index="${i}" style="background:#5a88b3">编辑</button>
+                <button class="btn-delete" data-index="${i}" style="background:#e35353">删除</button>
             </div>
         </div>`;
     });
     document.getElementById("billList").innerHTML=billHTML||"<div style='text-align:center;color:#aaa'>暂无记录</div>";
+
+    document.querySelectorAll('.btn-edit').forEach(btn=>{
+        btn.onclick=()=>editBill(btn.dataset.index);
+    });
+    document.querySelectorAll('.btn-delete').forEach(btn=>{
+        btn.onclick=()=>{
+            if(confirm("❌ 确定删除此账单？")){
+                deleteBill(btn.dataset.index);
+            }
+        };
+    });
 }
 
 function addBill() {
@@ -302,7 +313,6 @@ function editBill(index) {
     document.getElementById("addCard").style.display="none";
     document.getElementById("editCard").style.display="block";
 
-    // ✅ 自动平滑滚动到编辑框（你要的效果）
     setTimeout(() => {
         document.getElementById("editCard").scrollIntoView({
             behavior: "smooth",
@@ -334,7 +344,6 @@ function cancelEdit() {
 }
 
 function deleteBill(index) {
-    if(!confirm("❌ 确定删除此账单？"))return;
     bills.splice(index,1);
     saveToLocal();
     render();
