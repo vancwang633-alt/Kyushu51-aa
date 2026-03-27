@@ -393,9 +393,15 @@ function render() {
     members.forEach(m=>{
         const v=balance[m];
         const icon=MEMBER_ICONS[m]||"👤";
-        if(v>1){ resHTML+=`<div class="result-item income">${icon} ${m} <span>应收 ¥${(v*rate/100).toFixed(2)}</span></div>`; }
-        else if(v<-1){ resHTML+=`<div class="result-item outcome">${icon} ${m} <span>应付 ¥${(-v*rate/100).toFixed(2)}</span></div>`; }
-        else{ resHTML+=`<div class="result-item clear">${icon} ${m} 已两清</div>`; }
+        if(v>1){ 
+            resHTML+=`<div class="result-item income">${icon} ${m} <span>应收 ${v.toFixed(0)}日元 / ¥${(v*rate/100).toFixed(2)}</span></div>`; 
+        }
+        else if(v<-1){ 
+            resHTML+=`<div class="result-item outcome">${icon} ${m} <span>应付 ${(-v).toFixed(0)}日元 / ¥${(-v*rate/100).toFixed(2)}</span></div>`; 
+        }
+        else{ 
+            resHTML+=`<div class="result-item clear">${icon} ${m} 已两清</div>`; 
+        }
     });
     document.getElementById("result").innerHTML=resHTML;
 
